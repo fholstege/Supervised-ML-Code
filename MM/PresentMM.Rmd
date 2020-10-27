@@ -1,0 +1,128 @@
+---
+title: "Implementing the MM algorithm for a linear model"
+output: html_document
+author: Floris Holstege
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# load the r-file with the code that implements the MM algorithm for a linear model
+source("modelMM.r")
+source("helpfunctions.r")
+
+# add the necessary libraries
+library(ggplot2)
+
+```
+
+## Data preparation
+
+
+```{r Air Quality Data Preparation}
+
+# load the air quality data
+load("Data/Airq_numeric.Rdata")
+
+# set to dataframe
+dfAirQ <- data.frame(Airq)
+
+# select dependent variable of air quality
+Y = dfAirQ$airq
+
+# select independent variables 
+X = dfAirQ[,-1]
+
+# scale the independent variables, and add an intercept to these
+Xscaled <- scale(X)
+Xintercept <- cbind(intercept = 1, Xscaled)
+
+
+```
+
+## Compare the linear model with MM to the standard lm() function
+
+
+```{r Comparison of model MM, and lm()}
+
+# set seed to ensure stability of results
+set.seed(0)
+
+# set e small
+e <- 0.0001
+
+# calculate the model using the MM algorithm
+modelMM <- calcModelMM(Xintercept, Y, e)
+
+# calc the model using the standard R library
+modelTest <- lm(airq ~ Xscaled,dfAirQ)
+
+# set notation of numbers
+options(scipen = 12)
+
+
+# Compare the sum of squared errors
+ResiMM <- modelMM$RSS
+ResiTest <- sum(resid(modelTest)^2)
+dfResi <- dfCompare(ResiMM, ResiTest, c("RSS with MM", "RS with lm()"))
+dfResi
+
+# Compare R^2 
+RsquaredMM <- modelMM$Rsquared
+RsquaredStandard <- summary(modelTest)$r.squared
+dfRsquared <-dfCompare(RsquaredMM, RsquaredStandard, c("R^2 with MM", "R^2 with lm()"))
+dfRsquared
+
+
+# Compare the beta's
+BetaMM <- modelMM$Beta
+BetaMM
+BetaStandard <- as.double(modelTest$coefficients)
+dfBetaCompare <- dfCompare(BetaMM, BetaStandard, c("Beta with MM", "Beta with lm()"))
+dfBetaCompare
+
+
+
+```
+
+
+## A different example: Bivariate regression with advertising data
+
+```{r }
+
+
+# load the advertising data
+load("Data/Advertising.Rdata")
+
+# set the advertising to dataframe
+dfAdv <- data.frame(Advertising)
+
+# select dependent variable of sales
+YAdv = dfAdv$Sales
+
+# select independent variable - for this example we use TV
+XAdv = data.frame(dfAdv$TV)
+
+# scale the independent variables, and add an intercept to these
+XAdvscaled <- scale(XAdv)
+XAdvintercept <- cbind(intercept = 1, XAdvscaled)
+colnames(XAdvintercept) <- c("intercept", "TV")
+
+# Est. MM model
+modelMMadv <- calcModelMM(XAdvintercept, YAdv, e)
+
+# create df to show estimated results
+Yestdf <- data.frame(cbind(modelMMadv$Yest, dfAdv$TV))
+colnames(Yestdf) <- c("Yest", "TV")
+
+# create plot that shows the line estimated by the MM function
+ggplot(data = dfAdv, aes(x=TV, y=Sales)) + 
+  geom_point() +
+  geom_line(data = Yestdf, aes(x=TV, y=Yest), color='red') +
+  theme_classic()
+
+
+
+
+```
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
