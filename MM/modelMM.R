@@ -2,6 +2,7 @@
 # Author: Floris Holstege
 # Purpose: implements the maximize by minorization algorithm for a linear model
 # Date: 27/10/2020
+#testingtesting
 
 
 
