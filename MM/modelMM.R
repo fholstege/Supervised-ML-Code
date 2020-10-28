@@ -1,5 +1,5 @@
 
-# Author: Floris Holstege
+# Author: Floris Holstege, Ruoying Dai
 # Purpose: implements the maximize by minorization algorithm for a linear model
 # Date: 27/10/2020
 

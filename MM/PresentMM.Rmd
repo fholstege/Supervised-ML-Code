@@ -1,7 +1,7 @@
 ---
 title: "Implementing the MM algorithm for a linear model"
 output: html_document
-author: Floris Holstege
+author: Floris Holstege, Ruoying Dai, 
 ---
 
 ```{r setup, include=FALSE}
