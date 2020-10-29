@@ -1,7 +1,10 @@
 ---
 title: "Implementing the MM algorithm for a linear model"
-output: html_document
-author: Floris Holstege, Ruoying Dai, 
+author: "Floris Holstege, Ruoying Dai,"
+output:
+  pdf_document: default
+  html_document: default
+  word_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -13,13 +16,17 @@ source("helpfunctions.r")
 
 # add the necessary libraries
 library(ggplot2)
+library(tinytex)
+
 
 ```
 
 ## Data preparation
 
 
-```{r Air Quality Data Preparation}
+```{r Data Preparation}
+
+## first, we load the air quality data
 
 # load the air quality data
 load("Data/Airq_numeric.Rdata")
@@ -28,14 +35,42 @@ load("Data/Airq_numeric.Rdata")
 dfAirQ <- data.frame(Airq)
 
 # select dependent variable of air quality
-Y = dfAirQ$airq
+Yair = dfAirQ$airq
 
-# select independent variables 
-X = dfAirQ[,-1]
+# select all other variables as independent variables
+Xair = dfAirQ[,-1]
 
 # scale the independent variables, and add an intercept to these
-Xscaled <- scale(X)
-Xintercept <- cbind(intercept = 1, Xscaled)
+XairScaled <- scale(Xair)
+XairIntercept <- cbind(intercept = 1, XairScaled)
+
+# set the data to matrix format
+mYair <- as.matrix(Yair)
+mXairIntercept <- as.matrix(XairIntercept)
+
+
+## second, we follow a similar procedure for the advertising data
+
+# load the advertising data
+load("Data/Advertising.Rdata")
+
+# set the advertising to dataframe
+dfAdv <- data.frame(Advertising)
+
+# select dependent variable of sales
+YAdv = dfAdv$Sales
+
+# select independent variable - for this example we use TV
+XAdv = data.frame(dfAdv$TV)
+
+# scale the independent variables, and add an intercept to these
+XAdvscaled <- scale(XAdv)
+XAdvintercept <- cbind(intercept = 1, XAdvscaled)
+colnames(XAdvintercept) <- c("intercept", "TV")
+
+# set the data to matrix format
+mYAdv <- as.matrix(YAdv)
+mAdvIntercept <- as.matrix(XAdvintercept)
 
 
 ```
@@ -52,10 +87,10 @@ set.seed(0)
 e <- 0.0001
 
 # calculate the model using the MM algorithm
-modelMM <- calcModelMM(Xintercept, Y, e)
+modelMM <- calcModelMM(mXairIntercept, mYair, e)
 
 # calc the model using the standard R library
-modelTest <- lm(airq ~ Xscaled,dfAirQ)
+modelTest <- lm(airq ~ XairScaled,dfAirQ)
 
 # set notation of numbers
 options(scipen = 12)
@@ -76,7 +111,6 @@ dfRsquared
 
 # Compare the beta's
 BetaMM <- modelMM$Beta
-BetaMM
 BetaStandard <- as.double(modelTest$coefficients)
 dfBetaCompare <- dfCompare(BetaMM, BetaStandard, c("Beta with MM", "Beta with lm()"))
 dfBetaCompare
@@ -88,25 +122,8 @@ dfBetaCompare
 
 ## A different example: Bivariate regression with advertising data
 
-```{r }
+```{r}
 
-
-# load the advertising data
-load("Data/Advertising.Rdata")
-
-# set the advertising to dataframe
-dfAdv <- data.frame(Advertising)
-
-# select dependent variable of sales
-YAdv = dfAdv$Sales
-
-# select independent variable - for this example we use TV
-XAdv = data.frame(dfAdv$TV)
-
-# scale the independent variables, and add an intercept to these
-XAdvscaled <- scale(XAdv)
-XAdvintercept <- cbind(intercept = 1, XAdvscaled)
-colnames(XAdvintercept) <- c("intercept", "TV")
 
 # Est. MM model
 modelMMadv <- calcModelMM(XAdvintercept, YAdv, e)
@@ -116,13 +133,15 @@ Yestdf <- data.frame(cbind(modelMMadv$Yest, dfAdv$TV))
 colnames(Yestdf) <- c("Yest", "TV")
 
 # create plot that shows the line estimated by the MM function
-ggplot(data = dfAdv, aes(x=TV, y=Sales)) + 
+ModelPlot <- ggplot(data = dfAdv, aes(x=TV, y=Sales)) + 
   geom_point() +
   geom_line(data = Yestdf, aes(x=TV, y=Yest), color='red') +
   theme_classic()
 
 
+ModelPlot
 
 
 ```
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+

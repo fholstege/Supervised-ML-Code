@@ -1,8 +1,7 @@
 
-# Author: Floris Holstege, Ruoying Dai
+# Author: Floris Holstege
 # Purpose: implements the maximize by minorization algorithm for a linear model
 # Date: 27/10/2020
-
 
 
 
@@ -10,21 +9,15 @@
 # Calculates the residual squared errors for a multiple regression of the form Y = XBeta + e
 # 
 # Parameters: 
-#   X: Dataframe of n x p (n = observations, p = independent variables)
-#   Y: Dataframe of n x 1 dependent variables (n = observations)
-#   Beta: p x 1 double with coefficients of said model
+#   mX: Matrix of n x p (n = observations, p = independent variables)
+#   mY: Matrix of n x 1 dependent variables (n = observations)
+#   mBeta: Column Matrix of p x 1 with coefficients of said model
 #   
 # Output:
 #   ESquared: float, residual squared errors
 # 
 
-calcRSS <- function(X, Y, Beta){
-  
-  # set the dataframes to matrices
-  mX = as.matrix(X)
-  mY = as.matrix(Y)
-  mBeta = as.matrix(Beta)
-  
+calcRSS <- function(mX, mY,mBeta){
 
   # calculate the errors
   mE <-  mY - mX %*% mBeta
@@ -49,15 +42,11 @@ calcRSS <- function(X, Y, Beta){
 
 calcLargestEigen <- function(X){
   
-  # get matrix of squared X
-  mX = as.matrix(X)
-  XSquared <- t(mX) %*% mX
-  
-  # get the eigenvalues of X squared
-  EigenValXSquared <- eigen(XSquared)$values
+  # get the eigenvalues of X 
+  EigenValX <- eigen(X)$values
   
   # from these eigenvalues, get the largest one
-  LargestEigenVal <- max(EigenValXSquared, na.rm = TRUE)
+  LargestEigenVal <- max(EigenValX, na.rm = TRUE)
   
   return(LargestEigenVal)
   
@@ -69,20 +58,16 @@ calcLargestEigen <- function(X){
 # Parameters:
 #   prevBeta: double, k-1th beta
 #   Lambda: double, largest eigenvalue of X (independent variables) squared
-#   X: Dataframe of n x p (n = observations, p = independent variables)
-#   Y: Dataframe of n x 1 dependent variables (n = observations)
+#   mX: Matrix of n x p (n = observations, p = independent variables)
+#   mY: Matrix of n x 1 dependent variables (n = observations)
 # 
 # Output: 
 #   BetaK; matrix of new set of coefficients
 
-calcBetaK <- function(prevBeta,Lambda, X, Y){
+calcBetaK <- function(prevBeta,Lambda, mX, mY){
   
   # get matrix of squared X
-  mX = as.matrix(X)
   XSquared <- t(mX) %*% mX
-  
-  # turn Y into matrix
-  mY = as.matrix(Y)
   
   # calculate the Kth 
   BetaK = prevBeta - ((1/Lambda) *  XSquared %*% prevBeta) + ((1/Lambda) * t(mX) %*% mY )
@@ -121,18 +106,19 @@ calcStepScore <- function(X,Y, prevBeta, currBeta){
 # Set the initial set of Beta's, randomly, between 0 and 1
 # 
 # Parameters:
-#   X: Dataframe of n x p (n = observations, p = independent variables)
+#   mX: Matrix of n x p (n = observations, p = independent variables)
 # 
 # Output: 
-#   B0: double, set of Beta's between 0 and 1
+#   B0: matrix, set of Beta's between 0 and 1
 
-getB0 <- function(X){
+getB0 <- function(mX){
   
   # determine the number of independent variables, generate as many random beta's
-  nIndVar = ncol(X)
+  nIndVar = ncol(mX)
   Beta0 <- runif(nIndVar, min=0, max=1)
   
-  return(Beta0)
+  # turn to matrix format and returns
+  return(as.matrix(Beta0))
   
 }
 
@@ -140,18 +126,15 @@ getB0 <- function(X){
 # Calculates the predicted Y, based on the X and est. Beta's of a linear model
 # 
 # Parameters:
-#   X: Dataframe of n x p (n = observations, p = independent variables)
-#   BetaEst: Estimated Beta's, px1 vector, 
+#   X: matrix of n x p (n = observations, p = independent variables)
+#   BetaEst: Matrix, Estimated Beta's, px1 column, 
 #
 # Output:
-#   Yestdf: Dataframe, predicted Y
+#   Yestdf: matrix, predicted Y
 #
 
-calcYest <- function(X,BetaEst){
+calcYest <- function(mX,mBetaEst){
   
-  # turn X and Beta's (est.) into matrix
-  mBetaEst <- as.matrix(BetaEst)
-  mX <- as.matrix(X)
   
   # multiply X with Beta (est.) to get predicted Y
   Yest <- mX %*% mBetaEst
@@ -160,7 +143,7 @@ calcYest <- function(X,BetaEst){
   Yestdf <- as.data.frame(Yest)
   colnames(Yestdf) <- c("Yest")
   
-  return(Yestdf)
+  return(as.matrix(Yestdf))
   
 }
 
@@ -168,26 +151,21 @@ calcYest <- function(X,BetaEst){
 # Calculates the r-squared
 #
 # Parameters:
-#   Y: dataframe, the true dependent variable   
-#   Yest: dataframe, the predicted dependent variable
+#   Y: matrix, the true dependent variable   
+#   Yest: matrix, the predicted dependent variable
 # 
 # Output:
 #   Rsquared: double, the Rsquared for a linear model
 
-calcRsquared <- function(Y, Yest){
+calcRsquared <- function(mY, mYest){
   
   # standardize Y, and Yest (mean of 0)
-  standardY = Y - mean(Y)
-  standardYest = Yest - mean(Yest$Yest)
-
-  # turn into matrix to perform multiplication
-  mY <- as.matrix(standardY)
-  mYest <- as.matrix(standardYest)
-  
+  mStandY = mY - mean(mY)
+  mStandYest = mYest - mean(mYest)
   
   # calculate Rsquared
-  numerator <- (t(mY) %*% mYest)^2
-  denominator <- (t(mY) %*% Y) %*% (t(mYest) %*% mYest)
+  numerator <- (t(mStandY) %*% mStandYest)^2
+  denominator <- (t(mStandY) %*% mY) %*% (t(mStandYest) %*% mStandYest)
   Rsquared <- (numerator/denominator)
   
   return(Rsquared)
@@ -214,13 +192,16 @@ calcRsquared <- function(Y, Yest){
 #
 
 
-calcModelMM <- function(X,Y,e){
+calcModelMM <- function(mX,mY,e){
   
   # set the previous beta to initial, random beta's
-  prevBeta <- getB0(X)
+  prevBeta <- getB0(mX)
+  
+  # calculate X'X
+  mXtX <- t(mX) %*% mX
   
   # get largest eigenvalue for the square of independent variables
-  Lambda <- calcLargestEigen(X)
+  Lambda <- calcLargestEigen(mXtX)
   
   # set initial stepscore to 0, k to 1. 
   StepScore <- 0
@@ -234,10 +215,10 @@ calcModelMM <- function(X,Y,e){
     k <- k + 1
     
     # calculate beta's for this k
-    BetaK <- calcBetaK(prevBeta, Lambda, X,Y)
+    BetaK <- calcBetaK(prevBeta, Lambda, mX,mY)
 
     # new stepscore, % difference in RSS between new Beta's and previous beta's
-    StepScore <- calcStepScore(X,Y,prevBeta,BetaK)
+    StepScore <- calcStepScore(mX,mY,prevBeta,BetaK)
 
     # assign current beta's to prevBeta variable for next iteration
     prevBeta <- BetaK
@@ -246,21 +227,19 @@ calcModelMM <- function(X,Y,e){
   
  
   # calculate several attributes of the linear model, put in dataframes or doubles
-  BetaFinal <- data.frame(BetaK)
-  RSSBetaK <- calcRSS(X,Y, BetaK)
-  Yest <- calcYest(X, BetaFinal)
-  Rsquared <- calcRsquared(Y, Yest)
-  Resi <- data.frame(residuals = Y - Yest$Yest)
+  BetaFinal <- as.matrix((BetaK))
+  RSSBetaK <- calcRSS(mX,mY, BetaK)
+  mYest <- calcYest(mX, BetaFinal)
+  Rsquared <- calcRsquared(mY, mYest)
+  Resi <- data.frame(residuals = mY - mYest)
 
   # add these attributes together as a list to make it easily accessible
-  results <- list(Beta = BetaFinal, RSS = RSSBetaK, Yest = Yest, Rsquared = Rsquared, Residuals = Resi)
+  results <- list(Beta = BetaFinal, RSS = RSSBetaK, Yest = mYest, Rsquared = Rsquared, Residuals = Resi)
   
 
   return(results)
   
 }
-
-
 
 
 
