@@ -103,7 +103,7 @@ calcStepScore <- function(X,Y, prevBeta, currBeta){
 }
 
 # getB0
-# Set M Beta's, randomly, between 0 and 1
+# Set Beta's, randomly, between 0 and 1
 # 
 # Parameters:
 #   mX: Matrix of n x p (n = observations, p = independent variables)
@@ -111,16 +111,11 @@ calcStepScore <- function(X,Y, prevBeta, currBeta){
 # Output: 
 #   B0: matrix, set of Beta's between 0 and 1
 
-getB0 <- function(mX, nBeta){
+getB0 <- function(mX){
   
   # determine the number of independent variables, generate as many random beta's
   nIndVar = ncol(mX)
   Beta0 <- runif(nIndVar, min=0, max=1)
-  
-  # set a  number of Beta's to zero, to create n beta's
-  indices <- sample(1:nIndVar, nIndVar - nBeta)
-  Beta0[indices] = 0
-  
   
   # turn to matrix format and returns
   return(as.matrix(Beta0))
@@ -158,11 +153,13 @@ calcYest <- function(mX,mBetaEst){
 # Parameters:
 #   Y: matrix, the true dependent variable   
 #   Yest: matrix, the predicted dependent variable
+#   (optional) adjusted: if True, return adjusted r squared
+#   (optional) p: if adjusted is calculated, add number of variables
 # 
 # Output:
-#   Rsquared: double, the Rsquared for a linear model
+#   Rsquared: double, the Rsquared or adjusted Rsquared for a linear model
 
-calcRsquared <- function(mY, mYest){
+calcRsquared <- function(mY, mYest, adjusted = FALSE, p=0){
   
   # standardize Y, and Yest (mean of 0)
   mStandY = mY - mean(mY)
@@ -172,6 +169,13 @@ calcRsquared <- function(mY, mYest){
   numerator <- (t(mStandY) %*% mStandYest)^2
   denominator <- (t(mStandY) %*% mY) %*% (t(mStandYest) %*% mStandYest)
   Rsquared <- (numerator/denominator)
+  
+  if(adjusted){
+    
+    n <- nrow(mY)
+    
+    adjRsquared = ((1-Rsquared)*(n - 1))/(n-p-1)
+  }
   
   return(Rsquared)
   
@@ -200,7 +204,7 @@ calcRsquared <- function(mY, mYest){
 calcModelMM <- function(mX,mY,e, nBeta){
   
   # set the previous beta to initial, random beta's
-  prevBeta <- getB0(mX, nBeta)
+  prevBeta <- getB0(mX)
 
   # calculate X'X
   mXtX <- t(mX) %*% mX
@@ -221,16 +225,10 @@ calcModelMM <- function(mX,mY,e, nBeta){
     
     # calculate beta's for this k
     BetaK <- calcBetaK(prevBeta, Lambda, mX,mY)
-    
-    print("Before: ")
-    print(BetaK)
-    
+
     # sort the beta's based on absolute value, remove the smallest ones to keep m 
     absBetaKOrdered <- order(abs(BetaK[,1]), decreasing = T)
     BetaK[!BetaK %in% BetaK[absBetaKOrdered,][1:nBeta]] <- 0
-    
-    print("After: ")
-    print(BetaK)
 
     # new stepscore, % difference in RSS between new Beta's and previous beta's
     StepScore <- calcStepScore(mX,mY,prevBeta,BetaK)
@@ -241,22 +239,55 @@ calcModelMM <- function(mX,mY,e, nBeta){
     
   }
   
-  
-  
   # calculate several attributes of the linear model, put in dataframes or doubles
   BetaFinal <- as.matrix((BetaK))
   RSSBetaK <- calcRSS(mX,mY, BetaK)
   mYest <- calcYest(mX, BetaFinal)
   Rsquared <- calcRsquared(mY, mYest)
+  adjRsquared <- calcRsquared(mY,mYest, adjusted = T, nBeta)
   Resi <- data.frame(residuals = mY - mYest)
+  
 
   # add these attributes together as a list to make it easily accessible
-  results <- list(Beta = BetaFinal, RSS = RSSBetaK, Yest = mYest, Rsquared = Rsquared, Residuals = Resi)
+  results <- list(Beta = BetaFinal, RSS = RSSBetaK, Yest = mYest, Rsquared = Rsquared, adjRsquared = adjRsquared, Residuals = Resi)
   
 
   return(results)
   
 }
+
+# findModelMM
+# finds the best linear model, using the MM algorithm, by testing model with 1, 2...up to all variables in X
+#
+# Parameters:
+#   X: Dataframe of n x p (n = observations, p = independent variables)
+#   Y: Dataframe of n x 1 dependent variables (n = observations)
+
+findModelMM <- function(mX, mY, e){
+  
+  nIndVar = ncol(mX)
+  M = 1
+  
+  results <- list()
+  
+  
+  while(M <= nIndVar){
+    
+    M <- M + 1
+    
+    resultM <- calcModelMM(mX, mY, e, M)
+    
+    strSave <- paste0("Model with ", M-1, " variable(s)")
+    results[strSave] <- resultM
+
+  }
+  
+  return(results)
+  
+  
+  
+}
+
 
 # make sure working directory is correct
 setwd("C:/Users/flori/OneDrive/Documents/GitHub/Supervised ML Code/MM")
@@ -283,18 +314,24 @@ mYair <- as.matrix(Yair)
 mXairIntercept <- as.matrix(XairIntercept)
 
 
+
 # set seed to ensure stability of results
-set.seed(0)
+set.seed(1)
 
 # set e small
-e <- 0.00001
+e <- 0.000001
 
 
+# select the number of beta's you want to use in the model
 nBeta <- ncol(mXairIntercept)
 
-
-# calculate the model using the MM algorithm
+# calculate the model using the MM algorithm, using the max (6) variables
 modelMM <- calcModelMM(mXairIntercept, mYair, e, nBeta)
+
+
+# calculate the model with MM, for 1-6 variables
+compareModelMM <- findModelMM(mXairIntercept, mYair, e)
+
 
 
 
