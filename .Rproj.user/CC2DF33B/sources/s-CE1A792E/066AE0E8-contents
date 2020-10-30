@@ -1,0 +1,10 @@
+# sort the beta's based on absolute value
+absBetaK <- abs(BetaK[,1])
+BetaKSorted <- BetaK[order(-absBetaK)]
+
+# only select the m greatest beta's in absolute terms
+if(nBeta != length(BetaKSorted)){
+  
+  BetaKSorted[nBeta:length(BetaKSorted)]<- 0 
+  
+}

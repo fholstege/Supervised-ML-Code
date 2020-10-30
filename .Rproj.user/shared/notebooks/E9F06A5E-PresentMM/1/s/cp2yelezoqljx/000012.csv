@@ -1,0 +1,7 @@
+"0",""
+"0",""
+"0","# Compare the beta's"
+"0","BetaMM <- modelMM$Beta"
+"0","BetaStandard <- as.double(modelTest$coefficients)"
+"0","dfBetaCompare <- dfCompare(BetaMM, BetaStandard, c(""Beta with MM"", ""Beta with lm()""))"
+"0","dfBetaCompare"

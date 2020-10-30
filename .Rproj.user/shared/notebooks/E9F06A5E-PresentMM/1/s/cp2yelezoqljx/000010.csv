@@ -1,0 +1,6 @@
+"0",""
+"0","# Compare R^2 "
+"0","RsquaredMM <- modelMM$Rsquared"
+"0","RsquaredStandard <- summary(modelTest)$r.squared"
+"0","dfRsquared <-dfCompare(RsquaredMM, RsquaredStandard, c(""R^2 with MM"", ""R^2 with lm()""))"
+"0","dfRsquared"
