@@ -93,6 +93,7 @@ modelMM <- calcModelMM(mXairIntercept, mYair, e, nBeta)
 
 # calc the model using the standard R library
 modelTest <- lm(airq ~ XairScaled,dfAirQ)
+summary(modelTest)
 
 # set notation of numbers
 options(scipen = 12)

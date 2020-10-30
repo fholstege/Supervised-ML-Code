@@ -168,16 +168,21 @@ calcRsquared <- function(mY, mYest, adjusted = FALSE, p=0){
   # calculate Rsquared
   numerator <- (t(mStandY) %*% mStandYest)^2
   denominator <- (t(mStandY) %*% mY) %*% (t(mStandYest) %*% mStandYest)
-  Rsquared <- (numerator/denominator)
+  resultRsquared <- (numerator/denominator)
   
   if(adjusted){
     
     n <- nrow(mY)
     
-    adjRsquared = ((1-Rsquared)*(n - 1))/(n-p-1)
+    adjRsquared = 1 - (((1-resultRsquared)*(n - 1))/(n-p-1))
+    
+    resultRsquared <- adjRsquared
+    
   }
   
-  return(Rsquared)
+  
+  
+  return(resultRsquared)
   
   
 }
@@ -189,7 +194,8 @@ calcRsquared <- function(mY, mYest, adjusted = FALSE, p=0){
 # Parameters:
 #   X: Dataframe of n x p (n = observations, p = independent variables)
 #   Y: Dataframe of n x 1 dependent variables (n = observations)
-#
+#   e: epsilon, parameter for threshold of improvement after which the algorithm should halt
+#   nBeta: number of variables one wants to use
 #
 # Output:
 #   model: dataframe, with the following attributes
@@ -202,6 +208,16 @@ calcRsquared <- function(mY, mYest, adjusted = FALSE, p=0){
 
 
 calcModelMM <- function(mX,mY,e, nBeta){
+  
+  print("Number of variables:")
+  print(nBeta)
+  
+  if(nBeta > ncol(mX) + 1){
+    
+    stop("You want to use more variables than there are in the dataset of independent variables")
+    
+  }
+  
   
   # set the previous beta to initial, random beta's
   prevBeta <- getB0(mX)
@@ -244,7 +260,7 @@ calcModelMM <- function(mX,mY,e, nBeta){
   RSSBetaK <- calcRSS(mX,mY, BetaK)
   mYest <- calcYest(mX, BetaFinal)
   Rsquared <- calcRsquared(mY, mYest)
-  adjRsquared <- calcRsquared(mY,mYest, adjusted = T, nBeta)
+  adjRsquared <- calcRsquared(mY,mYest, adjusted = T, p = nBeta-2)
   Resi <- data.frame(residuals = mY - mYest)
   
 
@@ -278,7 +294,7 @@ findModelMM <- function(mX, mY, e){
     resultM <- calcModelMM(mX, mY, e, M)
     
     strSave <- paste0("Model with ", M-1, " variable(s)")
-    results[strSave] <- resultM
+    results[[strSave]] <- resultM
 
   }
   
@@ -287,7 +303,6 @@ findModelMM <- function(mX, mY, e){
   
   
 }
-
 
 # make sure working directory is correct
 setwd("C:/Users/flori/OneDrive/Documents/GitHub/Supervised ML Code/MM")
@@ -331,6 +346,8 @@ modelMM <- calcModelMM(mXairIntercept, mYair, e, nBeta)
 
 # calculate the model with MM, for 1-6 variables
 compareModelMM <- findModelMM(mXairIntercept, mYair, e)
+
+
 
 
 
