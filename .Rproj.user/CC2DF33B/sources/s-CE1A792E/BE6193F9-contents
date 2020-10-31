@@ -1,0 +1,22 @@
+---
+title: "report"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Title of the report
+
+## Introduction
+This is a great report
+
+## Data
+
+
+## Method
+
+
+## Results
+

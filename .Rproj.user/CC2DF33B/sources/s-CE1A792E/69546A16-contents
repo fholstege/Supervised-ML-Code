@@ -2,7 +2,6 @@
 # Author: Floris Holstege
 # Purpose: implements the maximize by minorization algorithm for a linear model, including better subset selection
 # Date: 27/10/2020
-#testingtesting
 
 
 # calcRSS: Calculates the residual squared errors for a multiple regression of the form Y = XBeta + e
@@ -357,5 +356,7 @@ modelMM <- calcModelMM(mXairIntercept, mYair, e, nBeta)
 compareModelMM <- findModelMM(mXairIntercept, mYair, e)
 compareModelMM$`Model with 5 variable(s)`$SignificanceResults
 
+
+cor(Xair)
 
 
