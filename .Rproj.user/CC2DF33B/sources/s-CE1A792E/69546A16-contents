@@ -357,4 +357,6 @@ compareModelMM <- findModelMM(mXairIntercept, mYair, e)
 compareModelMM$`Model with 5 variable(s)`$SignificanceResults
 
 
+cor(Xair)
+
 
