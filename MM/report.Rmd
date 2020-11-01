@@ -1,20 +1,26 @@
 ---
 title: "report"
-output: pdf_document
+output:
+  html_document:
+    df_print: paged
+bibliography: bibliography.bibtex
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-### Title of the report
-
+# Title of the report
+## Introduction
+World Health Organization estimates 7 million death annually related to air pollution[@WHOestimation]. Air quality plays an vital role in public health. In order to improve air quality, this study aims to pinpoint the factors of air quality quantitatively. The factors under study are rainfall(inch), population density(per square mile), income per capita(dollar), added value of companies(dollar) and adjacency to coast(binary).
 
 ## Data
-
+Previous study has proven or suggested the relation between the five chosen variables and air quality. Both natural and anthropogenic events attribute to air quality in the atmosphere. A difference between generating air pollutant and distributing air pollutant is noted. The generation of air pollution relates to production and consumption from society [@baklanov2016megacities]. Accordingly, this study captures the relation by population density, income per capita and added values from companies. Furthermore, the distribution of air pollution mainly depends on the wind field [@leelHossy2014dispersion], which is quantified by the variable of adjacency to coast and rainfall in this study as they both reflect the wind field's condition.  
+From the econometrics dataset, this study examines five independent variables and one dependent variable [@RStudioData].
 
 ## Method
 
 
-## Results
+## Result
 
+## Reference
