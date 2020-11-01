@@ -3,6 +3,7 @@ title: "report"
 output:
   html_document:
     df_print: paged
+  pdf_document: default
 bibliography: bibliography.bibtex
 ---
 
@@ -12,15 +13,16 @@ knitr::opts_chunk$set(echo = TRUE)
 
 # Title of the report
 ## Introduction
-World Health Organization estimates 7 million death annually related to air pollution[@WHOestimation]. Air quality plays an vital role in public health. In order to improve air quality, this study aims to pinpoint the factors of air quality quantitatively. The factors under study are rainfall(inch), population density(per square mile), income per capita(dollar), added value of companies(dollar) and adjacency to coast(binary).
+World Health Organization estimates 7 million death annually related to air pollution[@WHOestimation]. Air quality plays an vital role in public health. In order to improve air quality, this study aims to pinpoint the factors of air quality quantitatively. The factors under study are rainfall, population density, income per capita, added value of companies and adjacency to coast. To shed light on the relation between air quality and its factors, we adopts better subset selection algorithm. A better subset selection is favourable due to its better fit in terms of smaller residual sum of squares. The algorithm yields a better fit than a subset without optimization as the result of its monotonicity [@xiong2014better]. Another strong motivation for a subset selection is the avoidance of unnecessary measurement or sampling. Smaller sets of variables may reduce measurement cost.  
+This study attempts to answer: Are societal impact stronger than geographic impact to air quality in 1972's California? (Ruoying: Here I group our variables into two groups. One is societal, the other is geographic. Open to discussion!!) We implemented better subset selection based on the algorithm of maximization in majorization. As the optimal subset is unknown, we ran the selection with all possible variable number. In this report, the implementation details in the Method section follows the introduction and preprocessing of data in the Data section. The research question is answered in the Result section.
 
-## Data
+## Data{#Data}
 Previous study has proven or suggested the relation between the five chosen variables and air quality. Both natural and anthropogenic events attribute to air quality in the atmosphere. A difference between generating air pollutant and distributing air pollutant is noted. The generation of air pollution relates to production and consumption from society [@baklanov2016megacities]. Accordingly, this study captures the relation by population density, income per capita and added values from companies. Furthermore, the distribution of air pollution mainly depends on the wind field [@leelHossy2014dispersion], which is quantified by the variable of adjacency to coast and rainfall in this study as they both reflect the wind field's condition.  
-From the econometrics dataset, this study examines five independent variables and one dependent variable [@RStudioData].
+From the econometrics dataset for 1972's air quality in California, this study examines five independent variables and one dependent variable [@RstudioData]. The dependent variables under study are rainfall(inch), population density(per square mile), income per capita(dollar), added value of companies(dollar) and adjacency to coast(binary). The dataset has 30 set of observations for the 6 variables in this study. As the unit of each variable is heterogenerous, we scaled all independent variables before regression so as to ensure fair interpretation of the model coefficents. After scaling, each independent variable has the mean of 0 and the variance of 1.
 
-## Method
+## Method{#Method}
 
 
-## Result
+## Result{#Result}
 
-## Reference
+## Reference{#Reference}
