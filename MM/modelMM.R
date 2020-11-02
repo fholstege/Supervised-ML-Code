@@ -14,8 +14,6 @@
 # Output:
 #   ESquared: double, residual squared errors
 
-
-
 calcRSS <- function(mX, mY,mBeta){
   
   # calculate the errors
@@ -28,7 +26,6 @@ calcRSS <- function(mX, mY,mBeta){
   return(ESquared[1,1])
   
 }
-
 
 # calcCovar: Calculates the covariance matrix 
 #
@@ -51,7 +48,6 @@ calcCovar <- function(RSS, mXtX,n, p){
   return(Covar)
   
 }
-
 
 # calcSignificance: Calculates the statistical significance of a set of beta's
 #
@@ -165,9 +161,7 @@ calcRsquared <- function(mY, mYest, adjusted = FALSE, p=0, n=0){
 }
 
 
-# calcModelMM
-#
-# Calculates a linear model, using the majorization in minimization (MM) algorithm
+# calcModelMM:  Calculates a linear model, using the majorization in minimization (MM) algorithm
 #
 # Parameters:
 #   X: Dataframe of n x p (n = observations, p = independent variables)
@@ -265,10 +259,6 @@ calcModelMM <- function(mX,mY,e, p){
                   n = n,
                   p = p)
   
-  
-  print(dfSignificance)
-  
-  
   return(result)
   
 }
@@ -293,9 +283,6 @@ findModelMM <- function(mX, mY, e){
   
   # for each m, check the best model and save the results
   while(M <= nIndVar){
-    
-    print("current M is: ")
-    print(M)
 
     resultM <- calcModelMM(mX, mY, e, M)
     
@@ -313,6 +300,7 @@ findModelMM <- function(mX, mY, e){
 }
 
 
+
 # load the air quality data
 load("Data/Airq_numeric.Rdata")
 
@@ -324,6 +312,12 @@ Yair = dfAirQ$airq
 
 # select all other variables as independent variables
 Xair = dfAirQ[,-1]
+
+# summary stats & correlation matrix
+stargazer(dfAirQ)
+
+corMatrix <- cor(Xair)
+
 
 # scale the independent variables, and add an intercept to these
 XairScaled <- scale(Xair)
@@ -339,10 +333,8 @@ set.seed(1)
 # set e small
 e <- 0.000001
 
-
 # calculate the model with MM, for 1-5 variables. This contains all the values shown in the paper 
 compareModelMM <- findModelMM(mXairIntercept, mYair, e)
-
 
 # rescale to check 
 BetaCoastInModel2 <- compareModelMM$`Model with 2 variable(s)`$Beta[,1][4]
@@ -354,6 +346,5 @@ plot(preferredModel$Yest,preferredModel$Residuals,
      ylab = "Residuals", 
      xlab = "Y est.",
      pch=19)
-
 
 
