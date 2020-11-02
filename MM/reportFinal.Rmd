@@ -59,21 +59,21 @@ In (1), Y denotes a random response variable, X denotes random vectors of p pred
 
 The difficult part of minimizing $RSS (\boldsymbol{\beta})$ lies in $\boldsymbol{\beta}^\top\mathbf{X}^\top\mathbf{X}\boldsymbol{\beta}$, since computing $\mathbf{X}^\top\mathbf{X}$ is computationally expensive with a large sample. One workaround for this problem is to minimize $RSS (\boldsymbol{\beta})$ using the majorization in minimization algorithm (MM). For this algorithm, we need to find a majorizing function of the form $\lambda\boldsymbol{\beta}^\top\boldsymbol{\beta} - 2\boldsymbol{\beta}^\top\beta$. For this majorizing function, we need $\mathbf{X}^\top\mathbf{X}-\lambda\mathbf{I}$ to be negative semidefinite (nsd). If this condition is unmet, the majorizing function is not convex, and thus we cannot find a minimum. We know that $\mathbf{X}^\top\mathbf{X}-\lambda\mathbf{I}$ is nsd for $\lambda\geq\lambda_{max}$ with $\lambda_{max}$ is the largest eigenvalue of $\mathbf{X}^\top\mathbf{X}$. \\
 
-If we substitute the majorizing function into  $RSS (\boldsymbol{\beta}) $, and minimize this new function (Ruoying adds notation here)
+If we substitute the majorizing function into $RSS (\boldsymbol{\beta})$, and minimize this new function (Ruoying adds notation here)
 
 We try to find the $\boldsymbol{\beta}$ for which RSS is minimized. We do this by choosing with an random initial $\beta_0\in\mathbb{R}^p$. We improve $\boldsymbol{\beta}$ through iteration k iterations. We define the improvement at step k is defined as the step score: 
 
-\begin{aligh}
+\begin{align}
 
-\text{step score} = $\frac{RSS (\boldsymbol{\beta_{k-1}}) - RSS (\boldsymbol{\beta_{k}})}{RSS (\boldsymbol{\beta_{k-1}})} $
+\text{step score} = $\frac{RSS (\boldsymbol{\beta_{k-1}}) - RSS (\boldsymbol{\beta_{k}})}{RSS (\boldsymbol{\beta_{k-1}})}$
 
 \end{align}
 
-If the step score falls below $\epsilon$, we stop the iteration to minimize $RSS (\boldsymbol{\beta}) $. We set the $\epsilon$ to a very small number, to ensure that the function is minimized until only very minor improvements can be made. This brings our final solution closer to the optimal solution. \\
+If the step score falls below $\epsilon$, we stop the iteration to minimize $RSS (\boldsymbol{\beta})$. We set the $\epsilon$ to a very small number, to ensure that the function is minimized until only very minor improvements can be made. This brings our final solution closer to the optimal solution. \\
 
 To judge which model best explains the relationship between the independent and dependent variables, we examine the adjusted R^2. To explain why we use this statistic, let's first examine $R^2$, which iS defined as  $R^2 = 1 - \frac{SSE}{SSTO}$, with SSTO and SSE denoting total sum of squares and error sum of squares correspondingly. This is a measure of the \% of variance in the dependent variable that can be explained by the model. When more variables are added, $R^2$ inherently will increase, but this might due to random chance. To account for this, we look at adjusted $R^2$, defined as $R^2_\alpha = 1 - (\frac{n-1}{n-p})(\frac{SSE}{SSTO})$, with n denoting our sample size, and p the number of independent variables minus the intercept. \\
 
-To find which models have a high $R^2_\alpha$, we use the better subset algorithm as proposed by [@xiong2014better]. In this algorithm, we again use MM to minimize $RSS (\boldsymbol{\beta}) $, but only allow models with a number of $m$ variables, as a subset of the original indepdent variables. This goes as follows: we set $m$ initial random values, with  $\beta_0\in\mathbb{R}^p$. Once we calculated $\beta_k$, we sort $|\beta_k|$, and only leave the $m$ largest coefficients as non-zero. We then continue iterating on $|\beta_k|$ with this new set of coefficients.  In our case, we let $m \in [1,5]$, as there were 5 independent variables in our dataset. We then computed for each $m$ the best model according to better subset selection. 
+To find which models have a high $R^2_\alpha$, we use the better subset algorithm as proposed by [@xiong2014better]. In this algorithm, we again use MM to minimize $RSS (\boldsymbol{\beta})$, but only allow models with a number of $m$ variables, as a subset of the original indepdent variables. This goes as follows: we set $m$ initial random values, with  $\beta_0\in\mathbb{R}^p$. Once we calculated $\beta_k$, we sort $|\beta_k|$, and only leave the $m$ largest coefficients as non-zero. We then continue iterating on $|\beta_k|$ with this new set of coefficients.  In our case, we let $m \in [1,5]$, as there were 5 independent variables in our dataset. We then computed for each $m$ the best model according to better subset selection. 
 
 
 ## Result{#Result}
