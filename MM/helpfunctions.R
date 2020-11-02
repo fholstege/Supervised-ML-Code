@@ -19,3 +19,18 @@ dfCompare = function(result1, result2, cols){
   
 }
 
+
+
+createOverviewdf <- function(result){
+  
+  row_sub = apply(result$Beta, 1, function(row) all(row !=0 ))
+  
+  df <- data.frame(result$Beta[row_sub,], 
+                   result$SignificanceResults$pval[row_sub],
+                   result$SignificanceResults$t[row_sub])
+  colnames(df) <- c("Coefficient", "P-value", "T-val with n-p-1 degree of freedom")
+  
+  return(df)
+  
+}
+

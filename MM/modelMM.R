@@ -325,70 +325,7 @@ findModelMM <- function(mX, mY, e){
 }
 
 
-library(matlib)
-library(stargazer)
-library(sjPlot)
 
 
-# load the air quality data
-load("Data/Airq_numeric.Rdata")
-
-# set to dataframe
-dfAirQ <- data.frame(Airq)
-
-# select dependent variable of air quality
-Yair = dfAirQ$airq
-
-# select all other variables as independent variables
-Xair = dfAirQ[,-1]
-
-# scale the independent variables, and add an intercept to these
-XairScaled <- scale(Xair)
-XairIntercept <- cbind(intercept = 1, XairScaled)
-
-# set the data to matrix format
-mYair <- as.matrix(Yair)
-mXairIntercept <- as.matrix(XairIntercept)
-
-# set seed to ensure stability of results
-set.seed(0)
-
-# set e small
-e <- 0.0000000001
-
-# select the number of beta's you want to use in the model
-nBeta <- ncol(mXairIntercept) - 1
-
-# calculate the model using the MM algorithm, using the max (6) variables
-modelMM <- calcModelMM(mXairIntercept, mYair, e, nBeta)
-
-
-# calculate the model with MM, for 1-5 variables
-compareModelMM <- findModelMM(mXairIntercept, mYair, e)
-
-
-
-createOverviewdf <- function(result){
-  
-  row_sub = apply(result$Beta, 1, function(row) all(row !=0 ))
-  
-  df <- data.frame(result$Beta[row_sub,], 
-                   result$SignificanceResults$pval[row_sub],
-                   result$SignificanceResults$t[row_sub])
-  colnames(df) <- c("Coefficient", "P-value", "T-val with n-p-1 degree of freedom")
-  
-  return(df)
-  
-}
-
-
-
-Show <- createOverviewdf(compareModelMM$`Model with 1 variable(s)`)
-Show
-
-## redundant
-model5 <- lm(airq ~ Xscaled,dfAirQ)
-
-stargazer(list(model5, model5, model5, model5, model5))
 
 
