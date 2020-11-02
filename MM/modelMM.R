@@ -1,32 +1,21 @@
 
 # Author: Floris Holstege
-# Purpose: implements the maximize by minorization algorithm for a linear model
+# Purpose: implements the maximize by minorization algorithm for a linear model, including better subset selection
 # Date: 27/10/2020
-#testingtesting
 
 
-
-
-# calcRSS
-# Calculates the residual squared errors for a multiple regression of the form Y = XBeta + e
+# calcRSS: Calculates the residual squared errors for a multiple regression of the form Y = XBeta + e
 # 
 # Parameters: 
-#   X: Dataframe of n x p (n = observations, p = independent variables)
-#   Y: Dataframe of n x 1 dependent variables (n = observations)
-#   Beta: p x 1 double with coefficients of said model
+#   mX: Matrix of n x p (n = observations, p = independent variables)
+#   mY: Column matrix of n x 1 dependent variables (n = observations)
+#   mBeta: Column Matrix of p x 1 coefficients
 #   
 # Output:
-#   ESquared: float, residual squared errors
-# 
+#   ESquared: double, residual squared errors
 
-calcRSS <- function(X, Y, Beta){
+calcRSS <- function(mX, mY,mBeta){
   
-  # set the dataframes to matrices
-  mX = as.matrix(X)
-  mY = as.matrix(Y)
-  mBeta = as.matrix(Beta)
-  
-
   # calculate the errors
   mE <-  mY - mX %*% mBeta
   
@@ -34,199 +23,201 @@ calcRSS <- function(X, Y, Beta){
   ESquared <- t(mE) %*% mE
   
   # return the residual sum of squared errors
-  return(ESquared)
+  return(ESquared[1,1])
   
 }
 
-# calcLargestEigen
-# Calculates the largest eigenvalue of an matrix of independent variables
+
+# calcCovar: Calculates the covariance matrix 
+#
+# Parameters: 
+#   RSS: Residual squared errors
+#   mXtX: pxp matrix, created from independent variables (X), multiplied with itself
+#   n: double, number of observations
+#   p: double, number of variables
+#
+# Output:
+#   Covar: matrix, covariance matrix
+
+calcCovar <- function(RSS, mXtX,n, p){
+  
+  # est. for sigma squared
+  SigmaSquared <- (RSS) / (n - p - 1)
+  
+  Covar <- SigmaSquared * as.matrix(inv(mXtX))
+  
+  return(Covar)
+  
+}
+
+
+# calcSignificance: Calculates the statistical significance of a set of beta's
+#
+# Parameters: 
+#   RSS: Residual squared errors
+#   mXtX: pxp matrix, created from independent variables (X), multiplied with itself
+#   n: double, number of observations
+#   p: double, number of variables
+#   mBetaEst: matrix of estimated Beta's
+#
+# Output:
+#   dfSignificance: dataframe, containing the results on statistical signficance
+
+calcSignificance <- function(RSS, mXtX, n,p, mBetaEst){
+  
+  # get covariance matrix
+  mCovar <- calcCovar(RSS,mXtX,n,p)
+  
+  # calculate the standard deviations
+  stdev <- sqrt(diag(mCovar))
+  
+  # define t, which is t-distributed with n-p-1 degrees of freedom 
+  t <- mBetaEst/stdev
+  pval <- 2*pt(-abs(t),df=n-p-1)
+  
+  dfSignificance <- data.frame(BetaEst = mBetaEst, 
+                               stdev = stdev, 
+                               t = t, 
+                               pval = pval)
+  
+  return(dfSignificance)
+}
+
+
+# calcLargestEigen: Calculates the largest eigenvalue of an matrix of independent variables
 # 
 # Parameters: 
-#   X: Dataframe of n x p (n = observations, p = independent variables)
+#   mX: Dataframe of n x p (n = observations, p = independent variables)
 #   
 # Output:
 #   LargestEigenval: float, largest eigenvalue of said matrix
-#   
 
-calcLargestEigen <- function(X){
+calcLargestEigen <- function(mX){
   
-  # get matrix of squared X
-  mX = as.matrix(X)
-  XSquared <- t(mX) %*% mX
-  
-  # get the eigenvalues of X squared
-  EigenValXSquared <- eigen(XSquared)$values
+  # get the eigenvalues of X 
+  EigenValX <- eigen(mX)$values
   
   # from these eigenvalues, get the largest one
-  LargestEigenVal <- max(EigenValXSquared, na.rm = TRUE)
+  LargestEigenVal <- max(EigenValX, na.rm = TRUE)
   
   return(LargestEigenVal)
   
 }
 
-#CalcBetaK
-# Calculates the kth beta in an MM algorithm
-# 
-# Parameters:
-#   prevBeta: double, k-1th beta
-#   Lambda: double, largest eigenvalue of X (independent variables) squared
-#   X: Dataframe of n x p (n = observations, p = independent variables)
-#   Y: Dataframe of n x 1 dependent variables (n = observations)
-# 
-# Output: 
-#   BetaK; matrix of new set of coefficients
 
-calcBetaK <- function(prevBeta,Lambda, X, Y){
-  
-  # get matrix of squared X
-  mX = as.matrix(X)
-  XSquared <- t(mX) %*% mX
-  
-  # turn Y into matrix
-  mY = as.matrix(Y)
-  
-  # calculate the Kth 
-  BetaK = prevBeta - ((1/Lambda) *  XSquared %*% prevBeta) + ((1/Lambda) * t(mX) %*% mY )
-  
-  return(BetaK)
-  
-  
-  
-}
-
-# CalcStepScore
-# Calculates the % improvement between the k-1th and kth set of beta's
+# CalcStepScore: Calculates the % improvement between the k-1th and kth set of beta's
 # 
 # Parameters:
 #   prevBeta: double, k-1th beta
 #   currbeta: double, kth beta
-#   X: Dataframe of n x p (n = observations, p = independent variables)
-#   Y: Dataframe of n x 1 dependent variables (n = observations)
+#   mX: Dataframe of n x p (n = observations, p = independent variables)
 # 
 # Output: 
 #   StepScore; double, % improvement between the RSS of the two sets of beta's
 
-calcStepScore <- function(X,Y, prevBeta, currBeta){
+calcStepScore <- function(mX,mY, prevBeta, currBeta){
   
   # difference in RSS between previous and current set of beta's
-  diffRSS <- (calcRSS(X,Y,prevBeta) - calcRSS(X,Y,currBeta))
+  diffRSS <- (calcRSS(mX,mY,prevBeta) - calcRSS(mX,mY,currBeta))
   
   # divide difference with previous score to get % change
-  StepScore <- diffRSS /calcRSS(X,Y,prevBeta)
+  StepScore <- diffRSS /calcRSS(mX,mY,prevBeta)
   
   return(StepScore)
   
 }
 
-# getB0
-# Set the initial set of Beta's, randomly, between 0 and 1
-# 
-# Parameters:
-#   X: Dataframe of n x p (n = observations, p = independent variables)
-# 
-# Output: 
-#   B0: double, set of Beta's between 0 and 1
 
-getB0 <- function(X){
-  
-  # determine the number of independent variables, generate as many random beta's
-  nIndVar = ncol(X)
-  Beta0 <- runif(nIndVar, min=0, max=1)
-  
-  return(Beta0)
-  
-}
 
-# calcYest
-# Calculates the predicted Y, based on the X and est. Beta's of a linear model
-# 
-# Parameters:
-#   X: Dataframe of n x p (n = observations, p = independent variables)
-#   BetaEst: Estimated Beta's, px1 vector, 
-#
-# Output:
-#   Yestdf: Dataframe, predicted Y
-#
-
-calcYest <- function(X,BetaEst){
-  
-  # turn X and Beta's (est.) into matrix
-  mBetaEst <- as.matrix(BetaEst)
-  mX <- as.matrix(X)
-  
-  # multiply X with Beta (est.) to get predicted Y
-  Yest <- mX %*% mBetaEst
-  
-  # turn into dataframe
-  Yestdf <- as.data.frame(Yest)
-  colnames(Yestdf) <- c("Yest")
-  
-  return(Yestdf)
-  
-}
 
 # calcRsquared
+#
 # Calculates the r-squared
 #
 # Parameters:
-#   Y: dataframe, the true dependent variable   
-#   Yest: dataframe, the predicted dependent variable
+#   Y: matrix, the true dependent variable   
+#   Yest: matrix, the predicted dependent variable
+#   (optional) adjusted: if True, return adjusted r squared
+#   (optional) p: if adjusted is calculated, add number of variables
 # 
 # Output:
-#   Rsquared: double, the Rsquared for a linear model
+#   Rsquared: double, the Rsquared or adjusted Rsquared for a linear model
 
-calcRsquared <- function(Y, Yest){
+calcRsquared <- function(mY, mYest, adjusted = FALSE, p=0, n=0){
   
   # standardize Y, and Yest (mean of 0)
-  standardY = Y - mean(Y)
-  standardYest = Yest - mean(Yest$Yest)
-
-  # turn into matrix to perform multiplication
-  mY <- as.matrix(standardY)
-  mYest <- as.matrix(standardYest)
-  
+  mStandY = mY - mean(mY)
+  mStandYest = mYest - mean(mYest)
   
   # calculate Rsquared
-  numerator <- (t(mY) %*% mYest)^2
-  denominator <- (t(mY) %*% Y) %*% (t(mYest) %*% mYest)
-  Rsquared <- (numerator/denominator)
+  numerator <- (t(mStandY) %*% mStandYest)^2
+  denominator <- (t(mStandY) %*% mY) %*% (t(mStandYest) %*% mStandYest)
+  resultRsquared <- (numerator/denominator)
   
-  return(Rsquared)
+  # if want adjusted R squared, 
+  if(adjusted){
+    
+    adjRsquared = 1 - (((1-resultRsquared)*(n - 1))/(n-p-1))
+    
+    resultRsquared <- adjRsquared
+    
+  }
+  
+  
+  
+  return(resultRsquared)
   
   
 }
 
 
 # calcModelMM
+#
 # Calculates a linear model, using the majorization in minimization (MM) algorithm
 #
 # Parameters:
 #   X: Dataframe of n x p (n = observations, p = independent variables)
 #   Y: Dataframe of n x 1 dependent variables (n = observations)
-#
+#   e: epsilon, parameter for threshold of improvement after which the algorithm should halt
+#   nBeta: number of variables one wants to use
 #
 # Output:
-#   model: dataframe, with the following attributes
+#   result: dataframe with attributes of the model: 
 #       - Beta: dataframe, the calculated Beta's
 #       - RSS: double, Sum of squared residuals
 #       - Yest: dataframe, the predicted Y
 #       - Rsquared: double, R^2 for the predicted Y
+#       - AdjRsquared: Adjusted Rsquared
+#       - Significance results: dataframe with significance results on the beta's
 #       - Residuals: dataframe, Y - Yest.
 #
 
-
-calcModelMM <- function(X,Y,e){
+calcModelMM <- function(mX,mY,e, nBeta){
   
-  # set the previous beta to initial, random beta's
-  prevBeta <- getB0(X)
+  
+  # get number of observations, and number of variables minues the intercept
+  n <- nrow(mX)
+  p <- ncol(mX) - 1
+  
+  # check the user has filled in an appropriate amount of beta's
+  if(nBeta > p + 1){
+    
+    stop("You want to use more variables than there are in the dataset of independent variables")
+    
+  }
+  
+  # set the previous beta variable to initial, random beta's
+  prevBeta <- runif(ncol(mX), min=0, max=1)
+  
+  # calculate X'X
+  mXtX <- t(mX) %*% mX
   
   # get largest eigenvalue for the square of independent variables
-  Lambda <- calcLargestEigen(X)
+  Lambda <- calcLargestEigen(mXtX)
   
   # set initial stepscore to 0, k to 1. 
   StepScore <- 0
   k <- 1
-  
   
   # run while, either if k is equal to 1, or the improvement between k-1th and kth set of beta's is smaller than the parameter e
   while (k == 1 | StepScore > e ){
@@ -235,34 +226,137 @@ calcModelMM <- function(X,Y,e){
     k <- k + 1
     
     # calculate beta's for this k
-    BetaK <- calcBetaK(prevBeta, Lambda, X,Y)
-
+    BetaK <- prevBeta - ((1/Lambda) *  mXtX %*% prevBeta) + ((1/Lambda) * t(mX) %*% mY )
+    
+    # sort the beta's based on absolute value, remove the smallest ones to keep m 
+    absBetaKOrdered <- order(abs(BetaK[,1]), decreasing = T)
+    BetaK[!BetaK %in% BetaK[absBetaKOrdered,][1:nBeta]] <- 0
+    
     # new stepscore, % difference in RSS between new Beta's and previous beta's
-    StepScore <- calcStepScore(X,Y,prevBeta,BetaK)
-
+    StepScore <- calcStepScore(mX,mY,prevBeta,BetaK)
+    
     # assign current beta's to prevBeta variable for next iteration
     prevBeta <- BetaK
     
+    
   }
   
- 
-  # calculate several attributes of the linear model, put in dataframes or doubles
-  BetaFinal <- data.frame(BetaK)
-  RSSBetaK <- calcRSS(X,Y, BetaK)
-  Yest <- calcYest(X, BetaFinal)
-  Rsquared <- calcRsquared(Y, Yest)
-  Resi <- data.frame(residuals = Y - Yest$Yest)
-
-  # add these attributes together as a list to make it easily accessible
-  results <- list(Beta = BetaFinal, RSS = RSSBetaK, Yest = Yest, Rsquared = Rsquared, Residuals = Resi)
+  ## Calculate several attributes of the linear model, put in dataframes or doubles
   
-
+  # set variable of final Beta est.
+  BetaFinal <- as.matrix((BetaK))
+  
+  # calculate the RSS of this final est.
+  RSSBetaK <- calcRSS(mX,mY, BetaK)
+  
+  # get the est. dependent variabels
+  mYest <- mX %*% BetaFinal
+  
+  # get the r2 and adjusted r2
+  Rsquared <- calcRsquared(mY, mYest)
+  adjRsquared <- calcRsquared(mY,mYest, adjusted = T,  p, n)
+  
+  # get the residuals
+  Resi <- data.frame(residuals = mY - mYest)
+  
+  # get the results on significance
+  dfSignificance <- calcSignificance(RSSBetaK, mXtX, n, p, BetaFinal)
+  
+  
+  # add these attributes together as a list to make it easily accessible
+  results <- list(Beta = BetaFinal, 
+                  RSS = RSSBetaK, 
+                  Yest = mYest,
+                  Rsquared = Rsquared, 
+                  adjRsquared = adjRsquared, 
+                  SignificanceResults = dfSignificance,
+                  Residuals = Resi)
+  
+  
   return(results)
   
 }
 
+# findModelMM
+#
+# finds the best linear model, using the MM algorithm, by testing model with 1, 2...up to all variables in X
+#
+# Parameters:
+#   mX: Matrix of n x p (n = observations, p = independent variables)
+#   mY: Matrix of n x 1 dependent variables (n = observations)
+#
+# Output:
+#   results: list with the results for each model version
+
+findModelMM <- function(mX, mY, e){
+  
+  # get the number of independent variables used
+  nIndVar = ncol(mX) - 1
+  
+  # start at m = 1, create empty list to be filled with results
+  M = 1
+  results <- list()
+  
+  # for each m, check the best model and save the results
+  while(M <= nIndVar){
+    
+    M <- M + 1
+    
+    resultM <- calcModelMM(mX, mY, e, M)
+    
+    strSave <- paste0("Model with ", M-1, " variable(s)")
+    results[[strSave]] <- resultM
+    
+  }
+  
+  return(results)
+  
+  
+  
+}
+
+# make sure working directory is correct
+setwd("C:/Users/flori/OneDrive/Documents/GitHub/Supervised ML Code/MM")
 
 
+# load the air quality data
+load("Data/Airq_numeric.Rdata")
 
+# set to dataframe
+dfAirQ <- data.frame(Airq)
+
+# select dependent variable of air quality
+Yair = dfAirQ$airq
+
+# select all other variables as independent variables
+Xair = dfAirQ[,-1]
+
+# scale the independent variables, and add an intercept to these
+XairScaled <- scale(Xair)
+XairIntercept <- cbind(intercept = 1, XairScaled)
+
+# set the data to matrix format
+mYair <- as.matrix(Yair)
+mXairIntercept <- as.matrix(XairIntercept)
+
+# set seed to ensure stability of results
+set.seed(1)
+
+# set e small
+e <- 0.000001
+
+# select the number of beta's you want to use in the model
+nBeta <- ncol(mXairIntercept) - 1
+
+# calculate the model using the MM algorithm, using the max (6) variables
+modelMM <- calcModelMM(mXairIntercept, mYair, e, nBeta)
+
+
+# calculate the model with MM, for 1-5 variables
+compareModelMM <- findModelMM(mXairIntercept, mYair, e)
+compareModelMM$`Model with 5 variable(s)`$SignificanceResults
+
+
+cor(Xair)
 
 
