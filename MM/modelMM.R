@@ -343,3 +343,17 @@ e <- 0.000001
 # calculate the model with MM, for 1-5 variables. This contains all the values shown in the paper 
 compareModelMM <- findModelMM(mXairIntercept, mYair, e)
 
+
+# rescale to check 
+BetaCoastInModel2 <- compareModelMM$`Model with 2 variable(s)`$Beta[,1][4]
+BetaCoestInModel2_rescaled <- (mean(dfAirQ$coasyes) + BetaCoastInModel2 )/sd(dfAirQ$coasyes)
+
+# check heteroskedasticity
+preferredModel <- compareModelMM$`Model with 2 variable(s)`
+plot(preferredModel$Yest,preferredModel$Residuals, 
+     ylab = "Residuals", 
+     xlab = "Y est.",
+     pch=19)
+
+
+
