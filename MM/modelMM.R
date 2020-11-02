@@ -169,11 +169,15 @@ calcRsquared <- function(mY, mYest, adjusted = FALSE, p=0, n=0){
   
 }
 
-rescale.coefs <- function(mBeta) {
-  beta2 <- beta ## inherit names etc.
-  beta2[-1] <- sigma[1]*beta[-1]/sigma[-1]
-  beta2[1]  <- sigma[1]*beta[1]+mu[1]-sum(beta2[-1]*mu[-1])
-  beta2
+rescaleBeta <- function(mBeta, stdev, mX) {
+  
+  muX = colMeans(mX)
+  
+  rescaleBeta <- mBeta
+  rescaleBeta[-1] <- stdev[1]*mBeta[-1]/stdev[-1]
+  rescaleBeta[1]  <- stdev[1]*mBeta[1]+muX[1]-sum(rescaleBeta[-1]*muX[-1])
+  
+  return(rescaleBeta)
 }
 
 
@@ -249,9 +253,7 @@ calcModelMM <- function(mX,mY,e, nBeta){
   
   ## Calculate several attributes of the linear model, put in dataframes or doubles
   
-  BetaFinal <- as.matrix(BetaK)
-  
-  
+  BetaFinal <- as.matrix(BetaK, ,mX)
   
   # calculate the RSS of this final est.
   RSSBetaK <- calcRSS(mX,mY, BetaK)
@@ -269,10 +271,14 @@ calcModelMM <- function(mX,mY,e, nBeta){
   # get the results on significance
   dfSignificance <- calcSignificance(RSSBetaK, mXtX, n, p, BetaFinal)
   
+  t <- rescaleBeta(BetaFinal, dfSignificance$stdev, mX)
+  print(t)
+  
+  
   
   # add these attributes together as a list to make it easily accessible
   result <- list(Beta = BetaFinal,
-                 BetaRescaled 
+                  BetaRescaled = t,
                   RSS = RSSBetaK, 
                   Yest = mYest,
                   Rsquared = Rsquared, 
@@ -353,15 +359,16 @@ set.seed(0)
 e <- 0.0000000001
 
 # select the number of beta's you want to use in the model
-nBeta <- ncol(mXairIntercept) - 1
+nBeta <- ncol(mXairIntercept)
+nBeta
 
 # calculate the model using the MM algorithm, using the max (5) variables
 modelMM <- calcModelMM(mXairIntercept, mYair, e, nBeta)
+createOverviewdf(modelMM)
+
 
 # calculate the model with MM, for 1-5 variables. This contains all the values shown in the paper 
 compareModelMM <- findModelMM(mXairIntercept, mYair, e)
-
-model5
 
 
 
