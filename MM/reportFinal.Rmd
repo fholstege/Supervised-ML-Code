@@ -122,7 +122,7 @@ To make the result on coastal areas a bit more interpretable, If we rescale the 
 
 ## Limitations and Future Research
 
-Apart from the limitations to our dataset, we should note several other limitations to our applied method. First, there are other variables that affect air polution that we did not consider. An example is ..... (add citation). Second, while our method is appropriate for estimating linear relationships, previous research has shown that the effects of certain variables on air pollution is non-linear - one such example is environmental regulation (... add citation). \\
+Apart from the limitations to our dataset, we should note several other limitations to our applied method. First, there are other variables that affect air polution that we did not consider. An example is ..... (add citation). Second, while our method is appropriate for estimating linear relationships, previous research has shown that the effects of certain variables on air pollution is non-linear - one such example is environmental regulation [@liu2019nonlinear]. \\
 \\
 Future research should aim to add more areas, years, and variables to our analysis to consider other possibilities. In addition, while there is some existing research on air quality in coastal areas (see....), it is worth further disentangling the geographic aspects of coastal areas that lead to an improvement in air quality, to see if those aspects that can be recreated in non-coastal areas. 
 

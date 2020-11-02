@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.21 (TeX Live 2020/W32TeX) (preloaded format=pdflatex 2020.11.2)  2 NOV 2020 22:01
+This is pdfTeX, Version 3.14159265-2.6-1.40.21 (TeX Live 2020/W32TeX) (preloaded format=pdflatex 2020.11.2)  2 NOV 2020 22:54
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -544,100 +544,18 @@ LaTeX Font Info:    External font `lmex10' loaded for size
 (Font)              <10> on input line 182.
 LaTeX Font Info:    External font `lmex10' loaded for size
 (Font)              <7> on input line 182.
-
-Overfull \hbox (41.78758pt too wide) in paragraph at lines 247--281
- [][] 
- []
-
-[2] [3]
-LaTeX Font Info:    Trying to load font information for T1+lmtt on input line 3
-28.
-(c:/Users/flori/AppData/Roaming/TinyTeX/texmf-dist/tex/latex/lm/t1lmtt.fd
-File: t1lmtt.fd 2009/10/30 v1.6 Font defs for Latin Modern
-)
-LaTeX Font Info:    Font shape `T1/lmtt/bx/n' in size <10> not available
-(Font)              Font shape `T1/lmtt/b/n' tried instead on input line 339.
-[4]
-Underfull \vbox (badness 10000) detected at line 623
- []
-
-
-Underfull \vbox (badness 10000) detected at line 623
- []
-
-[5]
-Underfull \vbox (badness 10000) detected at line 623
- []
-
-
-Underfull \vbox (badness 10000) detected at line 623
- []
-
-[6]
-Underfull \vbox (badness 10000) detected at line 623
- []
-
-
-Underfull \vbox (badness 10000) detected at line 623
- []
-
-[7]
-Underfull \vbox (badness 10000) detected at line 623
- []
-
-
-Underfull \vbox (badness 10000) detected at line 623
- []
-
-[8] [9]
-Overfull \hbox (18.49356pt too wide) in paragraph at lines 647--647
-[]\T1/lmtt/m/n/10 ##  Hlavac, Marek (2018). stargazer: Well-Formatted Regressio
-n and Summary Statistics Tables.[] 
- []
-
-[10] [11] (./reportFinal.aux)
-Package rerunfilecheck Info: File `reportFinal.out' has not changed.
-(rerunfilecheck)             Checksum: 97B8CF291978DB75D4684908488A3D72;890.
-
-LaTeX Warning: There were multiply-defined labels.
-
- ) 
+! Missing $ inserted.
+<inserted text> 
+                $
+l.220 ...g function into \$RSS (\boldsymbol{\beta}
+                                                  ) 
 Here is how much of TeX's memory you used:
- 10932 strings out of 481433
- 157795 string characters out of 5918820
- 477328 words of memory out of 5000000
- 27457 multiletter control sequences out of 15000+600000
- 597395 words of font info for 84 fonts, out of 8000000 for 9000
+ 10852 strings out of 481433
+ 156655 string characters out of 5918820
+ 447375 words of memory out of 5000000
+ 27413 multiletter control sequences out of 15000+600000
+ 589181 words of font info for 79 fonts, out of 8000000 for 9000
  14 hyphenation exceptions out of 8191
- 66i,13n,72p,487b,364s stack positions out of 5000i,500n,10000p,200000b,80000s
-{c:/Users/flori/AppData/Roaming/TinyTeX/texmf-dist/fonts/enc/dvips/lm/lm-ec.e
-nc}{c:/Users/flori/AppData/Roaming/TinyTeX/texmf-dist/fonts/enc/dvips/lm/lm-rm.
-enc}{c:/Users/flori/AppData/Roaming/TinyTeX/texmf-dist/fonts/enc/dvips/lm/lm-ma
-thsy.enc}{c:/Users/flori/AppData/Roaming/TinyTeX/texmf-dist/fonts/enc/dvips/lm/
-lm-mathit.enc}<c:/Users/flori/AppData/Roaming/TinyTeX/texmf-dist/fonts/type1/pu
-blic/lm/lmbx10.pfb><c:/Users/flori/AppData/Roaming/TinyTeX/texmf-dist/fonts/typ
-e1/public/lm/lmbx12.pfb><c:/Users/flori/AppData/Roaming/TinyTeX/texmf-dist/font
-s/type1/public/lm/lmbx7.pfb><c:/Users/flori/AppData/Roaming/TinyTeX/texmf-dist/
-fonts/type1/public/lm/lmmi10.pfb><c:/Users/flori/AppData/Roaming/TinyTeX/texmf-
-dist/fonts/type1/public/lm/lmmi7.pfb><c:/Users/flori/AppData/Roaming/TinyTeX/te
-xmf-dist/fonts/type1/public/lm/lmmib10.pfb><c:/Users/flori/AppData/Roaming/Tiny
-TeX/texmf-dist/fonts/type1/public/lm/lmr10.pfb><c:/Users/flori/AppData/Roaming/
-TinyTeX/texmf-dist/fonts/type1/public/lm/lmr17.pfb><c:/Users/flori/AppData/Roam
-ing/TinyTeX/texmf-dist/fonts/type1/public/lm/lmr7.pfb><c:/Users/flori/AppData/R
-oaming/TinyTeX/texmf-dist/fonts/type1/public/lm/lmr9.pfb><c:/Users/flori/AppDat
-a/Roaming/TinyTeX/texmf-dist/fonts/type1/public/lm/lmri10.pfb><c:/Users/flori/A
-ppData/Roaming/TinyTeX/texmf-dist/fonts/type1/public/lm/lmsy10.pfb><c:/Users/fl
-ori/AppData/Roaming/TinyTeX/texmf-dist/fonts/type1/public/lm/lmsy7.pfb><c:/User
-s/flori/AppData/Roaming/TinyTeX/texmf-dist/fonts/type1/public/lm/lmsy9.pfb><c:/
-Users/flori/AppData/Roaming/TinyTeX/texmf-dist/fonts/type1/public/lm/lmtk10.pfb
-><c:/Users/flori/AppData/Roaming/TinyTeX/texmf-dist/fonts/type1/public/lm/lmtt1
-0.pfb><c:/Users/flori/AppData/Roaming/TinyTeX/texmf-dist/fonts/type1/public/lm/
-lmtti10.pfb><c:/Users/flori/AppData/Roaming/TinyTeX/texmf-dist/fonts/type1/publ
-ic/amsfonts/symbols/msbm10.pfb>
-Output written on reportFinal.pdf (11 pages, 317022 bytes).
-PDF statistics:
- 205 PDF objects out of 1000 (max. 8388607)
- 172 compressed objects within 2 object streams
- 40 named destinations out of 1000 (max. 500000)
- 73 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 66i,13n,72p,255b,336s stack positions out of 5000i,500n,10000p,200000b,80000s
 
+!  ==> Fatal error occurred, no output PDF file produced!
