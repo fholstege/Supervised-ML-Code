@@ -129,12 +129,7 @@ calcStepScore <- function(mX,mY, prevBeta, currBeta){
   
 }
 
-
-
-
-# calcRsquared
-#
-# Calculates the r-squared
+# calcRsquared:  Calculates the r-squared
 #
 # Parameters:
 #   Y: matrix, the true dependent variable   
@@ -169,17 +164,6 @@ calcRsquared <- function(mY, mYest, adjusted = FALSE, p=0, n=0){
   
 }
 
-rescaleBeta <- function(mBeta, stdev, mX) {
-  
-  muX = colMeans(mX)
-  
-  rescaleBeta <- mBeta
-  rescaleBeta[-1] <- stdev[1]*mBeta[-1]/stdev[-1]
-  rescaleBeta[1]  <- stdev[1]*mBeta[1]+muX[1]-sum(rescaleBeta[-1]*muX[-1])
-  
-  return(rescaleBeta)
-}
-
 
 # calcModelMM
 #
@@ -202,22 +186,22 @@ rescaleBeta <- function(mBeta, stdev, mX) {
 #       - Residuals: dataframe, Y - Yest.
 #
 
-calcModelMM <- function(mX,mY,e, nBeta){
+calcModelMM <- function(mX,mY,e, p){
   
   
-  # get number of observations, and number of variables minues the intercept
+  # get number of observations
   n <- nrow(mX)
-  p <- ncol(mX) - 1
-  
+
+
   # check the user has filled in an appropriate amount of beta's
-  if(nBeta > p + 1){
+  if(p > ncol(mX) - 1){
     
     stop("You want to use more variables than there are in the dataset of independent variables")
     
   }
   
   # set the previous beta variable to initial, random beta's
-  prevBeta <- runif(ncol(mX), min=0, max=1)
+  prevBeta <- runif(ncol(mX), min=0, max=10)
   
   # calculate X'X
   mXtX <- t(mX) %*% mX
@@ -240,7 +224,7 @@ calcModelMM <- function(mX,mY,e, nBeta){
     
     # sort the beta's based on absolute value, remove the smallest ones to keep m 
     absBetaKOrdered <- order(abs(BetaK[,1]), decreasing = T)
-    BetaK[!BetaK %in% BetaK[absBetaKOrdered,][1:nBeta]] <- 0
+    BetaK[!BetaK %in% BetaK[absBetaKOrdered,][0:p+1]] <- 0
     
     # new stepscore, % difference in RSS between new Beta's and previous beta's
     StepScore <- calcStepScore(mX,mY,prevBeta,BetaK)
@@ -252,8 +236,7 @@ calcModelMM <- function(mX,mY,e, nBeta){
   }
   
   ## Calculate several attributes of the linear model, put in dataframes or doubles
-  
-  BetaFinal <- as.matrix(BetaK, ,mX)
+  BetaFinal <- as.matrix(BetaK)
   
   # calculate the RSS of this final est.
   RSSBetaK <- calcRSS(mX,mY, BetaK)
@@ -263,7 +246,7 @@ calcModelMM <- function(mX,mY,e, nBeta){
   
   # get the r2 and adjusted r2
   Rsquared <- calcRsquared(mY, mYest)
-  adjRsquared <- calcRsquared(mY,mYest, adjusted = T,  p, n)
+  adjRsquared <- calcRsquared(mY,mYest, adjusted = T, p, n)
   
   # get the residuals
   Resi <- mY - mYest
@@ -271,14 +254,8 @@ calcModelMM <- function(mX,mY,e, nBeta){
   # get the results on significance
   dfSignificance <- calcSignificance(RSSBetaK, mXtX, n, p, BetaFinal)
   
-  t <- rescaleBeta(BetaFinal, dfSignificance$stdev, mX)
-  print(t)
-  
-  
-  
   # add these attributes together as a list to make it easily accessible
   result <- list(Beta = BetaFinal,
-                  BetaRescaled = t,
                   RSS = RSSBetaK, 
                   Yest = mYest,
                   Rsquared = Rsquared, 
@@ -289,13 +266,14 @@ calcModelMM <- function(mX,mY,e, nBeta){
                   p = p)
   
   
+  print(dfSignificance)
+  
+  
   return(result)
   
 }
 
-# findModelMM
-#
-# finds the best linear model, using the MM algorithm, by testing model with 1, 2...up to all variables in X
+# findModelMM: finds the best linear model, using the MM algorithm, by testing model with 1, 2...up to all variables in X
 #
 # Parameters:
 #   mX: Matrix of n x p (n = observations, p = independent variables)
@@ -316,12 +294,15 @@ findModelMM <- function(mX, mY, e){
   # for each m, check the best model and save the results
   while(M <= nIndVar){
     
-    M <- M + 1
-    
+    print("current M is: ")
+    print(M)
+
     resultM <- calcModelMM(mX, mY, e, M)
     
-    strSave <- paste0("Model with ", M-1, " variable(s)")
+    strSave <- paste0("Model with ", M, " variable(s)")
     results[[strSave]] <- resultM
+    
+    M <- M + 1
     
   }
   
@@ -353,22 +334,12 @@ mYair <- as.matrix(Yair)
 mXairIntercept <- as.matrix(XairIntercept)
 
 # set seed to ensure stability of results
-set.seed(0)
+set.seed(1)
 
 # set e small
-e <- 0.0000000001
-
-# select the number of beta's you want to use in the model
-nBeta <- ncol(mXairIntercept)
-nBeta
-
-# calculate the model using the MM algorithm, using the max (5) variables
-modelMM <- calcModelMM(mXairIntercept, mYair, e, nBeta)
-createOverviewdf(modelMM)
+e <- 0.000001
 
 
 # calculate the model with MM, for 1-5 variables. This contains all the values shown in the paper 
 compareModelMM <- findModelMM(mXairIntercept, mYair, e)
-
-
 

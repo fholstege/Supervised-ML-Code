@@ -52,10 +52,11 @@ set.seed(0)
 e <- 0.0001
 
 # calculate the model using the MM algorithm
-modelMM <- calcModelMM(Xintercept, Y, e)
+modelMM <- calcModelMM(Xintercept, Y, e, )
 
 # calc the model using the standard R library
-modelTest <- lm(airq ~ Xscaled,dfAirQ)
+modelTest <- lm(airq ~ .,dfAirQ)
+modelTest
 
 # set notation of numbers
 options(scipen = 12)

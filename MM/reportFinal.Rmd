@@ -19,6 +19,43 @@ World Health Organization estimates 7 million that air pollution contributes to 
 Previous work has suggested the relation between the five chosen variables and air quality. Both natural and anthropogenic events attribute to air quality in the atmosphere. The distribution of air pollution mainly depends on the wind field [@leelHossy2014dispersion], which is quantified by the variable of adjacency to coast and rainfall in this study as they both reflect the wind field's condition.  Air quality is also influenced by the production and consumption from society, leading to emmissions [@baklanov2016megacities]. To account for this, our study includes variables on population density, income per capita and added values from companies. We use the econometrics dataset on air quality in California for 1972 [@RstudioData]. The dependent variable is an indicator of air quality (Ruoying - can you find what this indicator consists of?), the lower the better. The independent variables under study are rainfall(inch), population density(per square mile), income per capita (\$), added value of companies (\$) and adjacency to coast(binary). The dataset has 30 set of observations, each being a different metropolitan area in California. As the unit of each variable is heterogenerous, we scaled all independent variables to have a mean of 0 and a variance of 1, to ensure fair interpretation of the model coefficents. Scaling also ensures the MM algorithm converges faster (Ruoying - can you add a citation for why this is the case?)
 
 ## Method{#Method}
+Multiple regression is an extension of simple linear regression, which makes a linear combination of several explanatory predictors to predict the outcome of a response variable Y:
+
+$$
+\begin{align}
+Y = \beta_0 + \beta_1 &X_1+\beta_2 X_2 +...+ \beta_p X_p + \epsilon,
+\\
+\boldsymbol{y} = \mathbf{X} \boldsymbol{\beta} + \epsilon,
+\end{align}
+$$
+
+with Y denotes random response variable, X denotes random vectors of p predictor variables, $\boldsymbol{y}$ means observed n vector of response variable, $\mathbf{X}$ include n$\times$(p+1) predictor variables with first column of ones for the intercept, and $\boldsymbol{\beta}$ denotes (p+1) vector of weights$[\beta_0, \beta_1, \beta_2,...,\beta_p]^\top$.
+<br/>
+To minimize RSS $(\boldsymbol{\beta})$ over $\boldsymbol{\beta}$ with
+
+$$
+\begin{align}
+RSS (\boldsymbol{\beta}) = \mathbf{e}^\top \mathbf{e} = (\mathbf{y-X\boldsymbol{\beta}})&^\top (\mathbf{y-X\boldsymbol{\beta})},
+\\
+=\mathbf{y}^\top \mathbf{y} + \boldsymbol{\beta}^\top\mathbf{X}^\top\mathbf{X}\boldsymbol{\beta} -2\boldsymbol{\beta}\mathbf{X}^\top \mathbf{y}.
+\end{align}
+$$
+
+The difficult part of minimizing $RSS (\boldsymbol{\beta})$ lies in $\boldsymbol{\beta}^\top\mathbf{X}^\top\mathbf{X}\boldsymbol{\beta}$, thus we need to find majorizing function of the form $\lambda\boldsymbol{\beta}^\top\boldsymbol{\beta}$. Here we apply an MM-based iterative algorithm to minimize RSS($\boldsymbol{\beta}$), the basic idea is to replace original function f(x) by a simpler function, the majorizing function g(x,y). To apply an MM algorithm for multiple regression, Choose with some initial $\beta_0\in\mathbb{R}^p$ and small $\epsilon$, then compute $RSS (\boldsymbol{\beta_0})$, also compute $\lambda$ as the largest eigenvalue of $\mathbf{X}^\top\mathbf{X}$. Then set $k\leftarrow1$, while k=1 or $(RSS (\boldsymbol{\beta_{k-1}})-(\boldsymbol{\beta_{k}}))/RSS (\boldsymbol{\beta_{k-1}})>\epsilon$do $k\leftarrow k+1$, also update $\beta^{(k)} = \beta_{k-1} - \lambda^{-1}\mathbf{X}^\top\mathbf{X}\beta_{k-1} +\lambda^{-1}\mathbf{X}^\top\mathbf{y}$. As a check, print k,$RSS (\boldsymbol{\beta_{k}})$, and $RSS (\boldsymbol{\beta_{k-1}})-RSS (\boldsymbol{\beta_{k}})$.
+<br/>
+Besides, to find which predictors are important, we have to try to find best subset of m nonzero weights in $\beta$. For fixed m, we utilise better subset selection as a tool in our report. Better subset selection is an approximate algorithm based on MM, the same majorizing function is used as in the MM algorithm for multiple regression. We have:
+<br/>
+$$
+\begin{align}
+RSS (\boldsymbol\beta)\leq\lambda\boldsymbol\beta^\top\boldsymbol\beta&-2\lambda\boldsymbol\beta^\top\boldsymbol{u}+c_2
+\\
+=\lambda\sum_{j=1}^p (\beta_{j}&-u_{j})^2 + c_{3} 
+\\
+= g(\boldsymbol\beta,\boldsymbol\beta_{0})
+\end{align}
+$$
+Only m values of $\beta_{j}$ can be chosen different from 0. Then sort$|u_{j}|$ from large to small and set $\beta_{j}^+$ = $u_{j}$ for the first m elements. This choice ensures that $g(\boldsymbol\beta,\boldsymbol\beta_{0})$ is minimal.
+
 
 
 
@@ -65,10 +102,17 @@ Adjusted R$^{2}$ & 0.08 & 0.214 & 0.23 & 0.24 & 0.25 \\
 \end{tabular} 
 \end{table} 
 
-## Limitations & Conclusion
+
+## Limitations and Future Research
+
+Apart from the limitations to our dataset, we should note several other limitations to our applied method. First, there are other variables that affect air polution that we did not consider. An example is ..... (add citation). Second, while our method is appropriate for estimating linear relationships, previous research has shown that the effects of certain variables on air pollution is non-linear - one such example is environmental regulation (... add citation). \\
+\\
+Future research should aim to add more areas, years, and variables to our analysis to consider other possibilities. In addition, while there is some existing research on air quality in coastal areas (see....), it is worth further disentangling the geographic aspects of coastal areas that lead to an improvement in air quality, to see if those aspects that can be recreated in non-coastal areas. 
 
 
-
+## Conclusion
+(add sentence)
+Our results suggest that coastal areas experience much better air quality than non-coastal areas. This has implications for policymakers. It provides evidence for initiatives that move residents to coastal areas to expose them to enhanced air quality. One such initiative was recently announced in Taiwan(.....). On the other hand, our results suggest that policies which aim to limit population density or economic activity might be less effective than previously thought, since we found no statistically significant relationship between these variables and air pollution. \\
 
 
 
@@ -381,10 +425,12 @@ findModelMM <- function(mX, mY, e){
 
 ```{r echo = T, results = 'hide'}
 
-
+# load necessary packages
 library(matlib)
 library(stargazer)
 library(sjPlot)
+library(multiColl)
+
 
 ```
 

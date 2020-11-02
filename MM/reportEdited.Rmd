@@ -16,7 +16,26 @@ knitr::opts_chunk$set(echo = TRUE)
 World Health Organization estimates 7 million that air pollution contributes to the death of 7 million people, anually [@WHOestimation]. For policymakers, it is thus impportant to understand which factors contribute to air quality, in order to target their efforts to improve it. This study aims to pinpoint the factors that contribute to air quality, using multiple regression. The factors considered in this study are rainfall, population density, income per capita, added value of companies and adjacency to coast. To find which combination of these variables best described their relationship on air quality, we use the better subset selection algorithm [@xiong2014better]. Previous work showed this algorithm yields a better fit than a subset without optimization as the result of its monotonicity [@xiong2014better]. Our data revealed that whether or not an area is coastal was the only statistically significant variable. 
 
 ## Data{#Data}
-Previous work has suggested the relation between the five chosen variables and air quality. Both natural and anthropogenic events attribute to air quality in the atmosphere. The distribution of air pollution mainly depends on the wind field [@leelHossy2014dispersion], which is quantified by the variable of adjacency to coast and rainfall in this study as they both reflect the wind field's condition.  Air quality is also influenced by the production and consumption from society, leading to emmissions [@baklanov2016megacities]. To account for this, our study includes variables on population density, income per capita and added values from companies. We use the econometrics dataset on air quality in California for 1972 [@RstudioData]. The dependent variable is an indicator of air quality (Ruoying - can you find what this indicator consists of?), the lower the better. The independent variables under study are rainfall(inch), population density(per square mile), income per capita (\$), added value of companies (\$) and adjacency to coast(binary). The dataset has 30 set of observations, each being a different metropolitan area in California. As the unit of each variable is heterogenerous, we scaled all independent variables to have a mean of 0 and a variance of 1, to ensure fair interpretation of the model coefficents. Scaling also ensures the MM algorithm converges faster (Ruoying - can you add a citation for why this is the case?)
+
+Previous work has suggested the relation between the five chosen variables and air quality. Both natural and anthropogenic events attribute to air quality in the atmosphere. The distribution of air pollution mainly depends on the wind field [@leelHossy2014dispersion], which is quantified by the variable of adjacency to coast and rainfall in this study as they both reflect the wind field's condition.  Air quality is also influenced by the production and consumption from society, leading to emmissions [@baklanov2016megacities]. To account for this, our study includes variables on population density, income per capita and added values from companies.\\ We use the econometrics dataset on air quality in California for 1972 [@RstudioData]. The dependent variable is an indicator of air quality (Ruoying - can you find what this indicator consists of?), the lower the better. The independent variables under study are rainfall(inch), population density(per square mile), income per capita (\$), added value of companies (\$) and adjacency to coast(binary). The dataset has 30 set of observations, each being a different metropolitan area in California. As the unit of each variable is heterogenerous, we scaled all independent variables to have a mean of 0 and a variance of 1, to ensure fair interpretation of the model coefficents. Scaling also ensures the MM algorithm converges faster (Ruoying - can you add a citation for why this is the case?). An important limitation is that this data is somewhat limited. It only covers a single area in a single year. However, the results found can still contribute to our general understanding of the relationship between these variables and air quality. 
+
+
+\begin{table}[!htbp] \centering 
+  \caption{} 
+  \label{} 
+\begin{tabular}{@{\extracolsep{5pt}} cccccc} 
+\\[-1.8ex]\hline 
+\hline \\[-1.8ex] 
+ & vala & rain & coasyes & dens & medi \\ 
+\hline \\[-1.8ex] 
+vala & $1$ & $$-$0.149$ & $0.010$ & $0.158$ & $0.890$ \\ 
+rain & $$-$0.149$ & $1$ & $0.185$ & $0.009$ & $$-$0.086$ \\ 
+coasyes & $0.010$ & $0.185$ & $1$ & $0.005$ & $0.170$ \\ 
+dens & $0.158$ & $0.009$ & $0.005$ & $1$ & $0.195$ \\ 
+medi & $0.890$ & $$-$0.086$ & $0.170$ & $0.195$ & $1$ \\ 
+\hline \\[-1.8ex] 
+\end{tabular} 
+\end{table} 
 
 ## Method{#Method}
 
@@ -24,7 +43,10 @@ Previous work has suggested the relation between the five chosen variables and a
 
 ## Result{#Result}
 
-We use the better subset method to select the best model for an M number of variables, with $M \in [1,5]$. To assess the overall fit of each model, we look at adjusted $R^2$. We use this statistic because while it summarizes the % of the variance explained by the independent variables, it accounts for the fact that adding variables could improve the $R^2$ by random chance. The model that best explains the variance in air quality is the model in which all 5 variables are included, with an adjusted-$R^2$ of 25.4%. In this model (and all the others), the only statistically significant variable is the binary variable on coastal area. In the model with the best fit, one standard deviation in the coastal area variable leads to an decrease of -15.7 points in the air quality index. Rescaling this, it estimates that if a metropolitan area is coastal, the expected decrease in the air quality index (and thus improvement of air quality) is ..... The other variables have no statistically significant effect on air quality
+We apply the better subset method for M variables, with $M \in [1,5]$. To assess the overall fit of each model, we look at adjusted $R^2$. 
+
+
+We use this statistic because while it summarizes the % of the variance explained by the independent variables, it accounts for the fact that adding variables could improve the $R^2$ by random chance. The model that best explains the variance in air quality is the model in which all 5 variables are included, with an adjusted-$R^2$ of 25.4%. In this model (and all the others), the only statistically significant variable is the binary variable on coastal area. In the model with the best fit, one standard deviation in the coastal area variable leads to an decrease of -15.7 points in the air quality index. Rescaling this, it estimates that if a metropolitan area is coastal, the expected decrease in the air quality index (and thus improvement of air quality) is ..... The other variables have no statistically significant effect on air quality.
 
 
 \begin{table}[!htbp] \centering 
@@ -65,7 +87,13 @@ Adjusted R$^{2}$ & 0.08 & 0.214 & 0.23 & 0.24 & 0.25 \\
 \end{tabular} 
 \end{table} 
 
-## Limitations & Conclusion
+## Limitations, Conclusion, and Future Research. 
+
+Apart from the limitations to our dataset, we should note several other limitations to our applied method. First, there are other variables that affect air polution that we did not consider. An example is ..... (add citation). Second, while our method is appropriate for estimating linear relationships, previous research has shown that the effects of certain variables on air pollution is non-linear - one such example is environmental regulation (... add citation). \\
+\\
+Our results suggest that coastal areas experience much better air quality than non-coastal areas. This has implications for policymakers. It provides evidence for initiatives that move residents to coastal areas to expose them to enhanced air quality. One such initiative was recently announced in Taiwan: ..On the other hand, our results suggest that policies which aim to limit population density or economic activity might be less effective than previously thought, since we found no statistically significant relationship between these variables and air pollution. \\
+\\
+Future research should aim to add more areas, years, and variables to our analysis to consider other possibilities. In addition, while there is some existing research on air quality in coastal areas (see....), it is worth further disentangling the geographic aspects of coastal areas that lead to an improvement in air quality, to see if those aspects that can be recreated in non-coastal areas. 
 
 
 
