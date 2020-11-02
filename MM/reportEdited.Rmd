@@ -1,9 +1,77 @@
+---
+title: "report"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+bibliography: bibliography.bibtex
+---
 
-# Author: Floris Holstege
-# Purpose: implements the maximize by minorization algorithm for a linear model, including better subset selection
-# Date: 27/10/2020
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Title of the report
+## Introduction
+World Health Organization estimates 7 million that air pollution contributes to the death of 7 million people, anually [@WHOestimation]. For policymakers, it is thus impportant to understand which factors contribute to air quality, in order to target their efforts to improve it. This study aims to pinpoint the factors that contribute to air quality, using multiple regression. The factors considered in this study are rainfall, population density, income per capita, added value of companies and adjacency to coast. To find which combination of these variables best described their relationship on air quality, we use the better subset selection algorithm [@xiong2014better]. Previous work showed this algorithm yields a better fit than a subset without optimization as the result of its monotonicity [@xiong2014better]. Our data revealed that whether or not an area is coastal was the only statistically significant variable. 
+
+## Data{#Data}
+Previous work has suggested the relation between the five chosen variables and air quality. Both natural and anthropogenic events attribute to air quality in the atmosphere. The distribution of air pollution mainly depends on the wind field [@leelHossy2014dispersion], which is quantified by the variable of adjacency to coast and rainfall in this study as they both reflect the wind field's condition.  Air quality is also influenced by the production and consumption from society, leading to emmissions [@baklanov2016megacities]. To account for this, our study includes variables on population density, income per capita and added values from companies. We use the econometrics dataset on air quality in California for 1972 [@RstudioData]. The dependent variables under study are rainfall(inch), population density(per square mile), income per capita ($), added value of companies($) and adjacency to coast(binary). The dataset has 30 set of observations, each being a different metropolitan area in California. As the unit of each variable is heterogenerous, we scaled all independent variables to follow standard normal distribution, to ensure fair interpretation of the model coefficents. Scaling also ensures the MM algorithm converges faster.
 
 
+## Method{#Method}
+
+
+## Result{#Result}
+
+
+\begin{table}[!htbp] \centering 
+  \label{} 
+\begin{tabular}{@{\extracolsep{5pt}}lccccc} 
+\\[-1.8ex]\hline 
+\hline \\[-1.8ex] 
+ & \multicolumn{5}{c}{\textit{Dependent variable:}} \\ 
+\cline{2-6} 
+\\[-1.8ex] & \multicolumn{5}{c}{Air Quality} \\ 
+\\[-1.8ex] & (1) & (2) & (3) & (4) & (5)\\ 
+\hline \\[-1.8ex] 
+ Coastal Area & $-$13.73$^{***}$ & $-$13.83$^{***}$ & $-$14.85$^{***}$ & $-$14.98$^{***}$ & $-$15.57$^{***}$ \\ 
+  & (-2.54) & ($-$2.76) & ($-$2.98) & ($-$3.03) & ($-$3.19) \\ 
+  & & & & & \\ 
+ Value Added & - & 9.26 & 3.63 & 3.33 & 4.090 \\ 
+  &  & (0.86) & (0.34) & (0.31) & (0.39) \\ 
+  & & & & & \\ 
+ Median Income & - & - & 6.3 & 7.2 & 6.9 \\ 
+  &  &  & (0.58) & (0.67) & (0.65) \\ 
+  & & & & & \\ 
+ Population Density & - & - & - & $-$2.94 & $-$3.04 \\ 
+  &  &  &  & ($-$0.63) & ($-$0.66) \\ 
+  & & & & & \\ 
+  Rain  & - & - & - & - & 3.38 \\ 
+  &  &  &  & & 0.72 \\ 
+  & & & & & \\ 
+ Intercept & 104.700$^{***}$ & 104.700$^{***}$ & 104.700$^{***}$ & 104.700$^{***}$ & 104.700$^{***}$ \\ 
+  & (21.34) & (23.075) & (23.24) & (23.43) & (23.69) \\ 
+  & & & & & \\ 
+\hline \\[-1.8ex] 
+Observations & 30 & 30 & 30 & 30 & 30 \\ 
+R$^{2}$ & 0.240 & 0.349 & 0.359 & 0.369 & 0.383 \\ 
+Adjusted R$^{2}$ & 0.08 & 0.214 & 0.23 & 0.24 & 0.25 \\ 
+\hline 
+\hline \\[-1.8ex] 
+\textit{Note:}  & \multicolumn{5}{r}{$^{*}$p$<$0.1; $^{**}$p$<$0.05; $^{***}$p$<$0.01} \\ 
+\end{tabular} 
+\end{table} 
+
+
+
+## Reference{#Reference}
+
+
+
+
+### Functions 
+```{r}
 # calcRSS: Calculates the residual squared errors for a multiple regression of the form Y = XBeta + e
 # 
 # Parameters: 
@@ -13,8 +81,6 @@
 #   
 # Output:
 #   ESquared: double, residual squared errors
-
-
 
 calcRSS <- function(mX, mY,mBeta){
   
@@ -28,7 +94,6 @@ calcRSS <- function(mX, mY,mBeta){
   return(ESquared[1,1])
   
 }
-
 
 # calcCovar: Calculates the covariance matrix 
 #
@@ -51,7 +116,6 @@ calcCovar <- function(RSS, mXtX,n, p){
   return(Covar)
   
 }
-
 
 # calcSignificance: Calculates the statistical significance of a set of beta's
 #
@@ -85,7 +149,6 @@ calcSignificance <- function(RSS, mXtX, n,p, mBetaEst){
   return(dfSignificance)
 }
 
-
 # calcLargestEigen: Calculates the largest eigenvalue of an matrix of independent variables
 # 
 # Parameters: 
@@ -105,7 +168,6 @@ calcLargestEigen <- function(mX){
   return(LargestEigenVal)
   
 }
-
 
 # CalcStepScore: Calculates the % improvement between the k-1th and kth set of beta's
 # 
@@ -129,9 +191,6 @@ calcStepScore <- function(mX,mY, prevBeta, currBeta){
   
 }
 
-
-
-
 # calcRsquared
 #
 # Calculates the r-squared
@@ -153,28 +212,19 @@ calcRsquared <- function(mY, mYest, adjusted = FALSE, p=0, n=0){
   
   # calculate Rsquared
   numerator <- (t(mStandY) %*% mStandYest)^2
-  denominator <- (t(mStandY) %*% mStandY) %*% (t(mStandYest) %*% mStandYest)
+  denominator <- (t(mStandY) %*% mY) %*% (t(mStandYest) %*% mStandYest)
   resultRsquared <- (numerator/denominator)
   
   # if want adjusted R squared, 
   if(adjusted){
     
     adjRsquared = 1 - (((1-resultRsquared)*(n - 1))/(n-p-1))
-    
     resultRsquared <- adjRsquared
-    
   }
   
   return(resultRsquared)
   
 }
-
-#
-#
-#
-
-
-
 
 # calcModelMM
 #
@@ -199,16 +249,13 @@ calcRsquared <- function(mY, mYest, adjusted = FALSE, p=0, n=0){
 
 calcModelMM <- function(mX,mY,e, nBeta){
   
-  
   # get number of observations, and number of variables minues the intercept
   n <- nrow(mX)
   p <- ncol(mX) - 1
   
   # check the user has filled in an appropriate amount of beta's
   if(nBeta > p + 1){
-    
     stop("You want to use more variables than there are in the dataset of independent variables")
-    
   }
   
   # set the previous beta variable to initial, random beta's
@@ -247,7 +294,8 @@ calcModelMM <- function(mX,mY,e, nBeta){
   }
   
   ## Calculate several attributes of the linear model, put in dataframes or doubles
-  
+
+  # final Beta's
   BetaFinal <- as.matrix(BetaK)
   
   # calculate the RSS of this final est.
@@ -265,7 +313,6 @@ calcModelMM <- function(mX,mY,e, nBeta){
   
   # get the results on significance
   dfSignificance <- calcSignificance(RSSBetaK, mXtX, n, p, BetaFinal)
-  
   
   # add these attributes together as a list to make it easily accessible
   result <- list(Beta = BetaFinal, 
@@ -317,12 +364,59 @@ findModelMM <- function(mX, mY, e){
   
   return(results)
   
-  
-  
 }
 
+```
 
 
+## Analysis 
+
+```{r echo = T, results = 'hide'}
 
 
+library(matlib)
+library(stargazer)
+library(sjPlot)
+
+```
+
+
+```{r echo = T, results = 'hide'}
+
+# load the air quality data
+load("Data/Airq_numeric.Rdata")
+
+# set to dataframe
+dfAirQ <- data.frame(Airq)
+
+# select dependent variable of air quality
+Yair = dfAirQ$airq
+
+# select all other variables as independent variables
+Xair = dfAirQ[,-1]
+
+# scale the independent variables, and add an intercept to these
+XairScaled <- scale(Xair)
+XairIntercept <- cbind(intercept = 1, XairScaled)
+
+# set the data to matrix format
+mYair <- as.matrix(Yair)
+mXairIntercept <- as.matrix(XairIntercept)
+
+# set seed to ensure stability of results
+set.seed(0)
+
+# set e small
+e <- 0.0000000001
+
+# select the number of beta's you want to use in the model
+nBeta <- ncol(mXairIntercept) - 1
+
+# calculate the model using the MM algorithm, using the max (5) variables
+modelMM <- calcModelMM(mXairIntercept, mYair, e, nBeta)
+
+# calculate the model with MM, for 1-5 variables. This contains all the values shown in the paper 
+compareModelMM <- findModelMM(mXairIntercept, mYair, e)
+
+```
 

@@ -372,13 +372,17 @@ findModelMM <- function(mX, mY, e){
 
 ## Analysis 
 
-```{r}
+```{r echo = T, results = 'hide'}
 
 
 library(matlib)
 library(stargazer)
 library(sjPlot)
 
+```
+
+
+```{r echo = T, results = 'hide'}
 
 # load the air quality data
 load("Data/Airq_numeric.Rdata")
