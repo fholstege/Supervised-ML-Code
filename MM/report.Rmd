@@ -26,7 +26,6 @@ From the econometrics dataset for 1972's air quality in California, this study e
 ## Result{#Result}
 
 
-
 \begin{table}[!htbp] \centering 
   \label{} 
 \begin{tabular}{@{\extracolsep{5pt}}lccccc} 
@@ -53,12 +52,12 @@ From the econometrics dataset for 1972's air quality in California, this study e
   &  &  &  & & 0.72 \\ 
   & & & & & \\ 
  Intercept & 104.700$^{***}$ & 104.700$^{***}$ & 104.700$^{***}$ & 104.700$^{***}$ & 104.700$^{***}$ \\ 
-  & 21.34 & (4.419) & (4.419) & (4.419) & (23.69) \\ 
+  & (21.34) & (23.075) & (23.24) & (23.43) & (23.69) \\ 
   & & & & & \\ 
 \hline \\[-1.8ex] 
 Observations & 30 & 30 & 30 & 30 & 30 \\ 
-R$^{2}$ & 0.383 & 0.383 & 0.383 & 0.383 & 0.383 \\ 
-Adjusted R$^{2}$ & 0.254 & 0.254 & 0.254 & 0.254 & 0.254 \\ 
+R$^{2}$ & 0.240 & 0.349 & 0.359 & 0.369 & 0.383 \\ 
+Adjusted R$^{2}$ & 0.08 & 0.214 & 0.23 & 0.24 & 0.25 \\ 
 \hline 
 \hline \\[-1.8ex] 
 \textit{Note:}  & \multicolumn{5}{r}{$^{*}$p$<$0.1; $^{**}$p$<$0.05; $^{***}$p$<$0.01} \\ 
