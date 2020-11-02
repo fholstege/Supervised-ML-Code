@@ -1,9 +1,9 @@
 ---
 title: "report"
 output:
+  pdf_document: default
   html_document:
     df_print: paged
-  pdf_document: default
 bibliography: bibliography.bibtex
 ---
 
@@ -24,5 +24,47 @@ From the econometrics dataset for 1972's air quality in California, this study e
 
 
 ## Result{#Result}
+
+
+
+\begin{table}[!htbp] \centering 
+  \label{} 
+\begin{tabular}{@{\extracolsep{5pt}}lccccc} 
+\\[-1.8ex]\hline 
+\hline \\[-1.8ex] 
+ & \multicolumn{5}{c}{\textit{Dependent variable:}} \\ 
+\cline{2-6} 
+\\[-1.8ex] & \multicolumn{5}{c}{Air Quality} \\ 
+\\[-1.8ex] & (1) & (2) & (3) & (4) & (5)\\ 
+\hline \\[-1.8ex] 
+ Coastal Area & $-$13.73$^{***}$ & $-$13.83$^{***}$ & $-$14.85$^{***}$ & $-$14.98$^{***}$ & $-$15.57$^{***}$ \\ 
+  & (-2.54) & ($-$2.76) & ($-$2.98) & ($-$3.03) & ($-$3.19) \\ 
+  & & & & & \\ 
+ Value Added & - & 9.26 & 3.63 & 3.33 & 4.090 \\ 
+  &  & (0.86) & (0.34) & (0.31) & (0.39) \\ 
+  & & & & & \\ 
+ Median Income & - & - & 6.3 & 7.2 & 6.9 \\ 
+  &  &  & (0.58) & (0.67) & (0.65) \\ 
+  & & & & & \\ 
+ Population Density & - & - & - & $-$2.94 & $-$3.04 \\ 
+  &  &  &  & ($-$0.63) & ($-$0.66) \\ 
+  & & & & & \\ 
+  Rain  & - & - & - & - & 3.38 \\ 
+  &  &  &  & & 0.72 \\ 
+  & & & & & \\ 
+ Intercept & 104.700$^{***}$ & 104.700$^{***}$ & 104.700$^{***}$ & 104.700$^{***}$ & 104.700$^{***}$ \\ 
+  & 21.34 & (4.419) & (4.419) & (4.419) & (23.69) \\ 
+  & & & & & \\ 
+\hline \\[-1.8ex] 
+Observations & 30 & 30 & 30 & 30 & 30 \\ 
+R$^{2}$ & 0.383 & 0.383 & 0.383 & 0.383 & 0.383 \\ 
+Adjusted R$^{2}$ & 0.254 & 0.254 & 0.254 & 0.254 & 0.254 \\ 
+\hline 
+\hline \\[-1.8ex] 
+\textit{Note:}  & \multicolumn{5}{r}{$^{*}$p$<$0.1; $^{**}$p$<$0.05; $^{***}$p$<$0.01} \\ 
+\end{tabular} 
+\end{table} 
+
+
 
 ## Reference{#Reference}

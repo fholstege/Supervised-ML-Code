@@ -14,6 +14,8 @@
 # Output:
 #   ESquared: double, residual squared errors
 
+
+
 calcRSS <- function(mX, mY,mBeta){
   
   # calculate the errors
@@ -42,7 +44,7 @@ calcRSS <- function(mX, mY,mBeta){
 calcCovar <- function(RSS, mXtX,n, p){
   
   # est. for sigma squared
-  SigmaSquared <- (RSS) / (n - p - 1)
+  SigmaSquared <- (RSS) / (n - p -1)
   
   Covar <- SigmaSquared * as.matrix(inv(mXtX))
   
@@ -170,6 +172,12 @@ calcRsquared <- function(mY, mYest, adjusted = FALSE, p=0, n=0){
   
 }
 
+#
+#
+#
+
+
+
 
 # calcModelMM
 #
@@ -243,13 +251,12 @@ calcModelMM <- function(mX,mY,e, nBeta){
   
   ## Calculate several attributes of the linear model, put in dataframes or doubles
   
-  # set variable of final Beta est.
-  BetaFinal <- as.matrix((BetaK))
+  BetaFinal <- as.matrix(BetaK)
   
   # calculate the RSS of this final est.
   RSSBetaK <- calcRSS(mX,mY, BetaK)
   
-  # get the est. dependent variabels
+  # get the est. dependent variables
   mYest <- mX %*% BetaFinal
   
   # get the r2 and adjusted r2
@@ -257,23 +264,25 @@ calcModelMM <- function(mX,mY,e, nBeta){
   adjRsquared <- calcRsquared(mY,mYest, adjusted = T,  p, n)
   
   # get the residuals
-  Resi <- data.frame(residuals = mY - mYest)
+  Resi <- mY - mYest
   
   # get the results on significance
   dfSignificance <- calcSignificance(RSSBetaK, mXtX, n, p, BetaFinal)
   
   
   # add these attributes together as a list to make it easily accessible
-  results <- list(Beta = BetaFinal, 
+  result <- list(Beta = BetaFinal, 
                   RSS = RSSBetaK, 
                   Yest = mYest,
                   Rsquared = Rsquared, 
                   adjRsquared = adjRsquared, 
                   SignificanceResults = dfSignificance,
-                  Residuals = Resi)
+                  Residuals = Resi, 
+                  n = n,
+                  p = p)
   
   
-  return(results)
+  return(result)
   
 }
 
@@ -315,8 +324,10 @@ findModelMM <- function(mX, mY, e){
   
 }
 
-# make sure working directory is correct
-setwd("C:/Users/flori/OneDrive/Documents/GitHub/Supervised ML Code/MM")
+
+library(matlib)
+library(stargazer)
+library(sjPlot)
 
 
 # load the air quality data
@@ -340,10 +351,10 @@ mYair <- as.matrix(Yair)
 mXairIntercept <- as.matrix(XairIntercept)
 
 # set seed to ensure stability of results
-set.seed(1)
+set.seed(0)
 
 # set e small
-e <- 0.000001
+e <- 0.0000000001
 
 # select the number of beta's you want to use in the model
 nBeta <- ncol(mXairIntercept) - 1
@@ -354,9 +365,30 @@ modelMM <- calcModelMM(mXairIntercept, mYair, e, nBeta)
 
 # calculate the model with MM, for 1-5 variables
 compareModelMM <- findModelMM(mXairIntercept, mYair, e)
-compareModelMM$`Model with 5 variable(s)`$SignificanceResults
 
 
-cor(Xair)
+
+createOverviewdf <- function(result){
+  
+  row_sub = apply(result$Beta, 1, function(row) all(row !=0 ))
+  
+  df <- data.frame(result$Beta[row_sub,], 
+                   result$SignificanceResults$pval[row_sub],
+                   result$SignificanceResults$t[row_sub])
+  colnames(df) <- c("Coefficient", "P-value", "T-val with n-p-1 degree of freedom")
+  
+  return(df)
+  
+}
+
+
+
+Show <- createOverviewdf(compareModelMM$`Model with 1 variable(s)`)
+Show
+
+## redundant
+model5 <- lm(airq ~ Xscaled,dfAirQ)
+
+stargazer(list(model5, model5, model5, model5, model5))
 
 
