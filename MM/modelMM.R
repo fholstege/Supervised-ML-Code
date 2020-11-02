@@ -169,11 +169,12 @@ calcRsquared <- function(mY, mYest, adjusted = FALSE, p=0, n=0){
   
 }
 
-#
-#
-#
-
-
+rescale.coefs <- function(mBeta) {
+  beta2 <- beta ## inherit names etc.
+  beta2[-1] <- sigma[1]*beta[-1]/sigma[-1]
+  beta2[1]  <- sigma[1]*beta[1]+mu[1]-sum(beta2[-1]*mu[-1])
+  beta2
+}
 
 
 # calcModelMM
@@ -250,6 +251,8 @@ calcModelMM <- function(mX,mY,e, nBeta){
   
   BetaFinal <- as.matrix(BetaK)
   
+  
+  
   # calculate the RSS of this final est.
   RSSBetaK <- calcRSS(mX,mY, BetaK)
   
@@ -268,7 +271,8 @@ calcModelMM <- function(mX,mY,e, nBeta){
   
   
   # add these attributes together as a list to make it easily accessible
-  result <- list(Beta = BetaFinal, 
+  result <- list(Beta = BetaFinal,
+                 BetaRescaled 
                   RSS = RSSBetaK, 
                   Yest = mYest,
                   Rsquared = Rsquared, 
@@ -322,7 +326,42 @@ findModelMM <- function(mX, mY, e){
 }
 
 
+# load the air quality data
+load("Data/Airq_numeric.Rdata")
 
+# set to dataframe
+dfAirQ <- data.frame(Airq)
+
+# select dependent variable of air quality
+Yair = dfAirQ$airq
+
+# select all other variables as independent variables
+Xair = dfAirQ[,-1]
+
+# scale the independent variables, and add an intercept to these
+XairScaled <- scale(Xair)
+XairIntercept <- cbind(intercept = 1, XairScaled)
+
+# set the data to matrix format
+mYair <- as.matrix(Yair)
+mXairIntercept <- as.matrix(XairIntercept)
+
+# set seed to ensure stability of results
+set.seed(0)
+
+# set e small
+e <- 0.0000000001
+
+# select the number of beta's you want to use in the model
+nBeta <- ncol(mXairIntercept) - 1
+
+# calculate the model using the MM algorithm, using the max (5) variables
+modelMM <- calcModelMM(mXairIntercept, mYair, e, nBeta)
+
+# calculate the model with MM, for 1-5 variables. This contains all the values shown in the paper 
+compareModelMM <- findModelMM(mXairIntercept, mYair, e)
+
+model5
 
 
 

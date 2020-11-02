@@ -16,13 +16,15 @@ knitr::opts_chunk$set(echo = TRUE)
 World Health Organization estimates 7 million that air pollution contributes to the death of 7 million people, anually [@WHOestimation]. For policymakers, it is thus impportant to understand which factors contribute to air quality, in order to target their efforts to improve it. This study aims to pinpoint the factors that contribute to air quality, using multiple regression. The factors considered in this study are rainfall, population density, income per capita, added value of companies and adjacency to coast. To find which combination of these variables best described their relationship on air quality, we use the better subset selection algorithm [@xiong2014better]. Previous work showed this algorithm yields a better fit than a subset without optimization as the result of its monotonicity [@xiong2014better]. Our data revealed that whether or not an area is coastal was the only statistically significant variable. 
 
 ## Data{#Data}
-Previous work has suggested the relation between the five chosen variables and air quality. Both natural and anthropogenic events attribute to air quality in the atmosphere. The distribution of air pollution mainly depends on the wind field [@leelHossy2014dispersion], which is quantified by the variable of adjacency to coast and rainfall in this study as they both reflect the wind field's condition.  Air quality is also influenced by the production and consumption from society, leading to emmissions [@baklanov2016megacities]. To account for this, our study includes variables on population density, income per capita and added values from companies. We use the econometrics dataset on air quality in California for 1972 [@RstudioData]. The dependent variables under study are rainfall(inch), population density(per square mile), income per capita ($), added value of companies($) and adjacency to coast(binary). The dataset has 30 set of observations, each being a different metropolitan area in California. As the unit of each variable is heterogenerous, we scaled all independent variables to follow standard normal distribution, to ensure fair interpretation of the model coefficents. Scaling also ensures the MM algorithm converges faster.
-
+Previous work has suggested the relation between the five chosen variables and air quality. Both natural and anthropogenic events attribute to air quality in the atmosphere. The distribution of air pollution mainly depends on the wind field [@leelHossy2014dispersion], which is quantified by the variable of adjacency to coast and rainfall in this study as they both reflect the wind field's condition.  Air quality is also influenced by the production and consumption from society, leading to emmissions [@baklanov2016megacities]. To account for this, our study includes variables on population density, income per capita and added values from companies. We use the econometrics dataset on air quality in California for 1972 [@RstudioData]. The dependent variables under study are rainfall(inch), population density(per square mile), income per capita (\$), added value of companies (\$) and adjacency to coast(binary). The dataset has 30 set of observations, each being a different metropolitan area in California. As the unit of each variable is heterogenerous, we scaled all independent variables to follow a standard normal distribution, to ensure fair interpretation of the model coefficents. Scaling also ensures the MM algorithm converges faster.
 
 ## Method{#Method}
 
 
+
 ## Result{#Result}
+
+We use the better subset method to select the best model for an M number of variables, with $M \in [1,5]$. To assess the overall fit of each model, we look at adjusted $R^2$. We use this statistic because while it summarizes the % of the variance explained by the independent variables, it accounts for the fact that adding variables could improve the $R^2$ by random chance. The model that best explains the variance in air quality is the model in which all 5 variables are included, with an adjusted-$R^2$ of 25.4%. 
 
 
 \begin{table}[!htbp] \centering 
@@ -62,6 +64,10 @@ Adjusted R$^{2}$ & 0.08 & 0.214 & 0.23 & 0.24 & 0.25 \\
 \textit{Note:}  & \multicolumn{5}{r}{$^{*}$p$<$0.1; $^{**}$p$<$0.05; $^{***}$p$<$0.01} \\ 
 \end{tabular} 
 \end{table} 
+
+
+
+
 
 
 
