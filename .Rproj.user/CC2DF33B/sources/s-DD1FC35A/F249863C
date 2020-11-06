@@ -1,0 +1,32 @@
+{
+    "id": "F249863C",
+    "path": null,
+    "project_path": null,
+    "type": "r_dataframe",
+    "hash": "0",
+    "contents": "",
+    "dirty": false,
+    "created": 1604657250591.0,
+    "source_on_save": false,
+    "relative_order": 3,
+    "properties": {
+        "expression": "supermarket1996",
+        "caption": "supermarket1996",
+        "totalObservations": 77,
+        "displayedObservations": 77,
+        "variables": 50,
+        "cacheKey": "29F3C96B",
+        "object": "supermarket1996",
+        "environment": "",
+        "contentUrl": "grid_resource/gridviewer.html?env=&obj=supermarket1996&cache_key=29F3C96B&max_cols=50",
+        "preview": 0
+    },
+    "folds": "",
+    "lastKnownWriteTime": 3689351026666649137,
+    "encoding": "",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1604657250591,
+    "read_only": false,
+    "read_only_alternatives": []
+}
