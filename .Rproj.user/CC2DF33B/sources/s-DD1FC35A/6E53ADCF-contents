@@ -2,15 +2,9 @@
 # Purpose: implements the elastic net
 # Date: 27/10/2020
 
-
-load("supermarket1996.RData")
-summary(supermarket1996)
-
-mY = as.matrix(supermarket1996$GROCERY_sum)
-mX = as.matrix(supermarket1996[,-5:-1])
-
-library(MASS)
-library(matlib)
+require(MASS)
+require(matlib)
+require(caret)
 
 
 
@@ -18,7 +12,6 @@ library(matlib)
 calcLossterm <- function(lambda, alpha, D,p){lambda *(1 - alpha)*diag(p) + (lambda * alpha  * D) }
 
 calcA <- function(mXtX,n, lossterm){ (1/n) * mXtX + lossterm}
-
 
 calcLoss <- function(mX,mXtX, mBeta, mY,mYtY,lossterm, n, alpha){
 
@@ -69,8 +62,6 @@ calcElasticNet <- function(mX,mY,lambda,alpha,e){
     # step to next k
     k <- k + 1
     
-    print(k)
-    
     
     D <- 1/max(abs(prevBeta), e) * diag(p)
     lossterm <- calcLossterm(lambda,alpha, D,p)
@@ -91,29 +82,100 @@ calcElasticNet <- function(mX,mY,lambda,alpha,e){
   
   finalBeta <- prevBeta
   
-  finalRSS <- prevScore
-  
   mYpredicted = mX %*% finalBeta
   
   error <- mY - mYpredicted
   
   RMSE <- (1/n) * (t(error) %*% error)
-  print(RMSE)
   
   
-}
-
-listLambda = 10^(seq(-2,100,1))
-listLambda
-
-
-for(i in seq(1,length(listLambda),1)){
+  result = list(alpha = alpha,
+                lambda = lambda,
+                RMSE = RMSE,
+                Beta = finalBeta
+    
+  )
   
-  lambda = listLambda[i]
-  calcElasticNet(mX, mY, lambda, 0.5,0.0001)
+  return(result)
 
-
+  
 }
 
 
 
+kfoldEval <- function(mX, mY,lambda, alpha, e, k){
+  
+  folds <- createFolds(mY, k =k, list = TRUE, returnTrain = FALSE)
+
+  totalRSME = 0
+  
+  
+  for(i in seq(1, k)){
+    
+    mXfold <- mX[-folds[[i]],]
+    mYfold <- mY[-folds[[i]],]
+    
+
+    result <- calcElasticNet(mXfold, mYfold, lambda, alpha, e)
+    
+    totalRSME  = totalRSME + result$RMSE
+
+
+  }
+  AvgRSME = totalRSME / k
+    
+  
+  result = list(alpha = alpha,
+                lambda = lambda,
+                AvgRSME = AvgRSME
+  )
+  
+  return(result)
+}
+
+
+findHyperParam <- function(mX, mY, e, k, ParamCombinations){
+  
+  results <- data.frame(Lambda= numeric(), 
+                        Alpha= numeric(),
+                        AvgRSME = numeric())
+  
+
+  for(i in seq(1, length(ParamCombinations[[1]]))){
+    
+    print(paste0("Iteration: ", i))
+    print(paste0("Lambda: ", ParamCombinations$Var1[i]))
+    print(paste0("alpha: ", ParamCombinations$Var2[i]))
+    
+    resultKfold <- kfoldEval(mX, mY, ParamCombinations$Var1[i],ParamCombinations$Var2[i], e, k)
+    
+    print(paste0("Avg RMSE: ", resultKfold$AvgRSME))
+    
+    
+    resultRow <- c(ParamCombinations$Var1[i], ParamCombinations$Var2[i],resultKfold$AvgRSME)
+    results[i,] <- resultRow
+    print(results)
+    
+  }
+ 
+  
+}
+
+load("supermarket1996.RData")
+summary(supermarket1996)
+
+mY = as.matrix(supermarket1996$GROCERY_sum)
+mX = as.matrix(supermarket1996[,-5:-1])
+
+listLambda <- 10^seq(-2, 10, length.out = 50)
+listAlpha <- seq(0,1,0.1)
+
+ParamCombinations <- expand.grid(listLambda, listAlpha)
+ParamCombinations$Var1[1]
+
+findHyperParam(mX, mY, e=0.000001, k=5, ParamCombinations)
+
+
+results <- data.frame(Lambda= numeric(), 
+                      Alpha= numeric(),
+                      AvgRSME = numeric())
