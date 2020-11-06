@@ -1,0 +1,32 @@
+{
+    "id": "EC7D5271",
+    "path": null,
+    "project_path": null,
+    "type": "r_dataframe",
+    "hash": "0",
+    "contents": "",
+    "dirty": false,
+    "created": 1604674600824.0,
+    "source_on_save": false,
+    "relative_order": 9,
+    "properties": {
+        "expression": "Overview",
+        "caption": "Overview",
+        "totalObservations": "50",
+        "displayedObservations": "50",
+        "variables": "3",
+        "cacheKey": "88EB7FB3",
+        "object": "Overview",
+        "environment": "",
+        "contentUrl": "grid_resource/gridviewer.html?env=&obj=Overview&cache_key=88EB7FB3&max_cols=50",
+        "preview": "0"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 8389754706581218082,
+    "encoding": "",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1604674600824,
+    "read_only": false,
+    "read_only_alternatives": []
+}

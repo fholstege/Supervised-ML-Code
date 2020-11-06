@@ -2,25 +2,36 @@
 # Purpose: implements the elastic net
 # Date: 27/10/2020
 
-require(MASS)
-require(matlib)
-require(caret)
+library(MASS)
+library(matlib)
+library(caret)
+library(glmnet)
 
 
 
+# calcTypeNet: calculates a often, used variable in subsequent computations λ(1 − α)I + λα.
+# This indicates the division between the lasso (a = 1) and ridge method (a = 0)
+#  
+# 
 
-calcLossterm <- function(lambda, alpha, D,p){lambda *(1 - alpha)*diag(p) + (lambda * alpha  * D) }
+calcTypeNet <- function(lambda, alpha, D,p){lambda *(1 - alpha)*diag(p) + (lambda * alpha  * D) }
 
-calcA <- function(mXtX,n, lossterm){ (1/n) * mXtX + lossterm}
+#calcA: calculates the term A -which, which multiplies XtX with the TypeNet term  inv(n) * t(X)X + λ(1 − α)I + λα
+#
+#
 
-calcLoss <- function(mX,mXtX, mBeta, mY,mYtY,lossterm, n, alpha){
+calcA <- function(mXtX,n, TypeNet){ (1/n) * mXtX + TypeNet}
+
+# calcLoss: calculates the result of the loss function for a set of Beta's
+#
+#
+
+calcLoss <- function(mX,mXtX, mBeta, mY,mYtY,TypeNet, n, alpha){
 
   c = (1/2*n) %*% mYtY + (1/2) * alpha * sum(abs(mBeta))
-  
-  
   S = (t(mBeta) %*% t(mX) %*% mY)
   
-  U = ((1/n) * mXtX %*% lossterm)
+  U = ((1/n) * mXtX %*% TypeNet)
   V = (1/n)* S
   
   
@@ -34,6 +45,8 @@ calcLoss <- function(mX,mXtX, mBeta, mY,mYtY,lossterm, n, alpha){
   
 }
 
+
+# calcElasticNet: calculates the Elastic net results for a given lambda, alpha
 
 
 calcElasticNet <- function(mX,mY,lambda,alpha,e){
@@ -64,15 +77,15 @@ calcElasticNet <- function(mX,mY,lambda,alpha,e){
     
     
     D <- 1/max(abs(prevBeta), e) * diag(p)
-    lossterm <- calcLossterm(lambda,alpha, D,p)
-    A <- calcA(mXtX, n, lossterm)
+    TypeNet <- calcTypeNet(lambda,alpha, D,p)
+    A <- calcA(mXtX, n, TypeNet)
     
 
     currentBeta = (1/n) * inv(A) %*% t(mX) %*% mY
     
 
-    prevScore <- calcLoss(mX, mXtX, prevBeta, mY, mYtY, lossterm, n, alpha)
-    newscore <- calcLoss(mX, mXtX, currentBeta, mY, mYtY, lossterm, n, alpha)
+    prevScore <- calcLoss(mX, mXtX, prevBeta, mY, mYtY, TypeNet, n, alpha)
+    newscore <- calcLoss(mX, mXtX, currentBeta, mY, mYtY, TypeNet, n, alpha)
     
     StepScore <- (prevScore - newscore)/prevScore
     
@@ -102,29 +115,34 @@ calcElasticNet <- function(mX,mY,lambda,alpha,e){
 }
 
 
+# kfoldEval: evaluate the hyperparameters using k-fold cross validation 
+
 
 kfoldEval <- function(mX, mY,lambda, alpha, e, k){
   
+  # create k folds
   folds <- createFolds(mY, k =k, list = TRUE, returnTrain = FALSE)
-
   totalRSME = 0
   
   
+  # test the model on k-1 folds, k iterations
   for(i in seq(1, k)){
     
     mXfold <- mX[-folds[[i]],]
     mYfold <- mY[-folds[[i]],]
     
-
     result <- calcElasticNet(mXfold, mYfold, lambda, alpha, e)
     
     totalRSME  = totalRSME + result$RMSE
 
 
   }
+  
+  # average RSME of all the tests 
   AvgRSME = totalRSME / k
     
   
+  # returns results
   result = list(alpha = alpha,
                 lambda = lambda,
                 AvgRSME = AvgRSME
@@ -154,28 +172,45 @@ findHyperParam <- function(mX, mY, e, k, ParamCombinations){
     
     resultRow <- c(ParamCombinations$Var1[i], ParamCombinations$Var2[i],resultKfold$AvgRSME)
     results[i,] <- resultRow
-    print(results)
-    
+
   }
+  
+  return(results)
  
   
 }
 
+# load supermarket data
 load("supermarket1996.RData")
 summary(supermarket1996)
 
+# pick dependent and indpendent variable
 mY = as.matrix(supermarket1996$GROCERY_sum)
 mX = as.matrix(supermarket1996[,-5:-1])
 
+# scale the independent
+mXscaled <- scale(mX)
+
+# list of all possible lambda's, and all possible alpha's, create grid of these
 listLambda <- 10^seq(-2, 10, length.out = 50)
-listAlpha <- seq(0,1,0.1)
-
+listAlpha <- 0
 ParamCombinations <- expand.grid(listLambda, listAlpha)
-ParamCombinations$Var1[1]
 
-findHyperParam(mX, mY, e=0.000001, k=5, ParamCombinations)
+# find results per hyper parameter
+OverviewResults <- findHyperParam(mX, mY, e=0.000000000001, k=5, ParamCombinations)
+options(scipen = 999)
 
 
-results <- data.frame(Lambda= numeric(), 
-                      Alpha= numeric(),
-                      AvgRSME = numeric())
+# plot results per lambda
+plot(Overview$Lambda, Overview$AvgRSME^.5, log = "x", col = "red", type = "p", pch = 20,
+     xlab = expression(lambda), ylab = "RMSE", las = 1)
+
+# Compare with GLMnet
+#
+#
+
+result.cv <- cv.glmnet(mX, mY, alpha = 0,
+                       lambda = 10^seq(-2, 10, length.out = 50), nfolds = 5)
+plot(result.cv$lambda, result.cv$cvm^.5, log = "x", col = "red", type = "p", pch = 20,
+        xlab = expression(lambda), ylab = "RMSE", las = 1)
+
