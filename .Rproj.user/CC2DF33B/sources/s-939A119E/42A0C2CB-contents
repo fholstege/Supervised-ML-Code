@@ -3,6 +3,8 @@ library(MASS)
 library(matlib)
 library(caret)
 library(glmnet)
+library(tidyverse)
+library(reshape2)
 
 
 # calc_mD: Calculates diagonal matrix D
@@ -70,7 +72,7 @@ ElasticNetEst = function(mX, mY, beta_init, lambda, alpha, tolerance, epsilon, m
   
   # get initial values for mD, mA
   mD = calc_mD(beta_init, p, epsilon)
-  typeNetInit = calcTypeNet(lambda, alpha, mD, p)
+  typeNetInit = calc_typeNet(lambda, alpha, mD, p)
   mA = 1/n * mXtX + typeNetInit
   
   
@@ -126,6 +128,7 @@ crossValidation = function (df, k, beta_init, lambda, alpha, tolerance) {
     #Split the data according to the folds
     test = df[folds[[i]],]
     train = df[-folds[[i]],]
+    
     
     y_train = as.matrix(train[,1])
     X_train = as.matrix(train[,-1])
@@ -192,6 +195,8 @@ HyperSearch = function(df, k, grid, beta_init, tolerance){
 }
 
 
+set.seed(1)
+
 # load the data
 load("supermarket1996.RData")
 df = subset(supermarket1996, select = -c(STORE, CITY, ZIP, GROCCOUP_sum, SHPINDX) )  
@@ -200,23 +205,19 @@ df = subset(supermarket1996, select = -c(STORE, CITY, ZIP, GROCCOUP_sum, SHPINDX
 y = as.matrix(df[,1])
 X = as.matrix(df[,-1])
 
-Beta_init = as.matrix(runif(ncol(df)-1, min=-5, max=5))
+Beta_init = as.matrix(runif(ncol(df)-1, min=-1, max=1))
 
 
-tolerance = 1e-12
-epsilon = 1e-12
+tolerance = 0.1
+epsilon = 0.1
 
-
-
-
-
+10^-2
 
 listLambda <- 10^seq(-2, 10, length.out = 50)
-listAlpha <- seq(0,1,0.1)
+listAlpha <- 0
 paramGrid <- expand.grid(listLambda, listAlpha)
 
-gridSearch <- HyperSearch(df, 20, paramGrid, Beta_init, tolerance)
-gridSearch_best <- 
+gridSearch <- HyperSearch(df, 10, paramGrid, Beta_init, tolerance)
 
 
 # plot results per lambda
@@ -224,26 +225,71 @@ plot(gridSearch$Lambda, gridSearch$avg_rmse, log = "x", col = "red", type = "p",
      xlab = expression(lambda), ylab = "RMSE", las = 1)
 
 
-ggplot() + 
-  geom_point(data = gridSearch, aes( x = log(Lambda), y = avg_rmse, col = 'Red')) + 
-  geom_point(aes(x = log(result.cv$lambda), y = result.cv$cvm, col = 'Blue')) +
-  theme_minimal()
 
-
-
-ggplot(data = gridSearch, aes( x = log(Lambda), y = avg_rmse)) + 
-  geom_point() + 
-  geom_ribbon(aes(ymin=min_rsme, ymax=max_rsme), alpha=0.4) + 
-  theme_minimal()
-
-
-ggplot() + 
-  geom_point(aes(x = log(result.cv$lambda), y = result.cv$cvm, col = 'Red')) +
-  geom_ribbon(aes(x = log(result.cv$lambda), ymin=result.cv$cvup, ymax=result.cv$cvlo), alpha=0.4) 
-
-
-result.cv <- cv.glmnet(scale(X), scale(y), alpha = 0.5,
+result.cv <- cv.glmnet(scale(X), scale(y), alpha = 0,
                        lambda = 10^seq(-2, 10, length.out = 50), nfolds = 10)
 
-plot(result.cv$lambda, result.cv$cvm, log = "x", col = "red", type = "p", pch = 20,
-     xlab = expression(lambda), ylab = "RMSE", las = 1)
+
+ggplot() + 
+  geom_point(data = gridSearch, aes( x = log(Lambda), y = avg_rmse, col="Red")) + 
+  geom_point(aes(x = log(result.cv$lambda), y = result.cv$cvm, col = "Blue")) +
+  theme_minimal() 
+
+
+dfBeta <- data.frame()
+
+for(lambda in listLambda){
+  
+  y = scale(as.matrix(df[,1]))
+  x = scale(as.matrix(df[,-1]))
+  
+  BetaEst <- ElasticNetEst(x, y, Beta_init, lambda, 0, tolerance, epsilon)
+  
+  dfBeta <- rbind(dfBeta, t(BetaEst))
+  
+}
+
+dfBeta <- cbind(dfBeta, listLambda)
+
+dfBetaViz <- melt(dfBeta ,  id.vars = 'listLambda', variable.name = 'series')
+
+ggplot(dfBetaViz, aes(log(listLambda),value)) + geom_line(aes(colour = series))
+
+
+
+
+####
+
+
+fit.elnet <- glmnet(x, y, nfolds=5, lambda = 10^seq(-2, 10, length.out = 50),alpha=0)
+
+fit.elnet.cv <- cv.glmnet(x, y, nfold = 5,lambda = 10^seq(-2, 10, length.out = 50),
+                          type.measure="mse", alpha=0,
+                          family="gaussian",
+                          standardize = TRUE)
+
+plot(fit.elnet, xvar="lambda")
+plot(fit.elnet.cv, main="Elastic Net")
+
+
+
+
+#####
+
+
+# 
+# ggplot(data = gridSearch, aes( x = log(Lambda), y = avg_rmse)) + 
+#   geom_point() + 
+#   geom_ribbon(aes(ymin=min_rsme, ymax=max_rsme), alpha=0.4) + 
+#   theme_minimal()
+# 
+# 
+# ggplot() + 
+#   geom_point(aes(x = log(result.cv$lambda), y = result.cv$cvm, col = 'Red')) +
+#   geom_ribbon(aes(x = log(result.cv$lambda), ymin=result.cv$cvup, ymax=result.cv$cvlo), alpha=0.4) 
+# 
+# 
+# plot(result.cv$lambda, result.cv$cvm, log = "x", col = "red", type = "p", pch = 20,
+#      xlab = expression(lambda), ylab = "RMSE", las = 1)
+# 
+# cor(scale(X))

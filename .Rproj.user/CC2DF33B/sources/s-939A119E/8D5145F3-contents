@@ -1,0 +1,403 @@
+#----------------GLMNET------------------
+
+library(MASS)  # Package needed to generate correlated precictors
+library(glmnet)  # Package to fit ridge/lasso/elastic net models
+fit.elnet <- glmnet(mX, vy, nfolds=5, lambda = 10^seq(-4, 4, length.out = 50),alpha=.3)
+
+fit.elnet.cv <- cv.glmnet(mX, vy, nfold = 5,lambda = 10^seq(-4, 4, length.out = 50),
+                          type.measure="mse", alpha=.3,
+                          family="gaussian")
+
+plot(fit.elnet, xvar="lambda")
+plot(fit.elnet.cv, main="Elastic Net")
+
+plot(a, xvar="lambda")
+#------------------FUNCTION-----------------------
+
+calcLoss <- function(mX, mY, mXtX, mBeta, n, lambda, alpha, D){
+  c = (2*n)^(-1)* t(mY) %*% mY + 0.5*lambda *alpha * sum(mBeta)
+  loss = 0.5* t(mBeta)%*%(n*(-1)*mXtX + lambda *(1-alpha)*diag(nrow(mXtX)) + lambda *alpha* D)%*% mBeta
+  loss = loss - n^(-1)*t(mBeta)%*% t(mX) %*% mY + c
+  return(loss)
+  
+}
+
+calcCovar <- function(RSS, mXtX,n, p){
+  # calcCovar: Calculates the covariance matrix 
+  #
+  # Parameters: 
+  #   RSS: Residual squared errors
+  #   mXtX: pxp matrix, created from independent variables (X), multiplied with itself
+  #   n: double, number of observations
+  #   p: double, number of variables
+  #
+  # Output:
+  #   Covar: matrix, covariance matrix
+  # est. for sigma squared
+  SigmaSquared <- (RSS) / (n - p -1)
+  
+  Covar <- SigmaSquared * as.matrix(Ginv(mXtX))
+  
+  return(Covar)
+  
+}
+
+calcSignificance <- function(RSS, mXtX, n,p, mBetaEst){
+  # calcSignificance: Calculates the statistical significance of a set of beta's
+  #
+  # Parameters: 
+  #   RSS: Residual squared errors
+  #   mXtX: pxp matrix, created from independent variables (X), multiplied with itself
+  #   n: double, number of observations
+  #   p: double, number of variables
+  #   mBetaEst: matrix of estimated Beta's
+  #
+  # Output:
+  #   dfSignificance: dataframe, containing the results on statistical signficance
+  
+  # get covariance matrix
+  mCovar <- calcCovar(RSS,mXtX,n,p)
+  
+  # calculate the standard deviations
+  stdev <- sqrt(diag(mCovar))
+  
+  # define t, which is t-distributed with n-p-1 degrees of freedom 
+  t <- mBetaEst/stdev
+  pval <- 2*pt(-abs(t),df=n-p-1)
+  
+  dfSignificance <- data.frame(BetaEst = mBetaEst, 
+                               stdev = stdev, 
+                               t = t, 
+                               pval = pval)
+  
+  return(dfSignificance)
+}
+
+calcLargestEigen <- function(mX){
+  # calcLargestEigen: Calculates the largest eigenvalue of an matrix of independent variables
+  # 
+  # Parameters: 
+  #   mX: Dataframe of n x p (n = observations, p = independent variables)
+  #   
+  # Output:
+  #   LargestEigenval: float, largest eigenvalue of said matrix
+  
+  # get the eigenvalues of X 
+  EigenValX <- eigen(mX)$values
+  
+  # from these eigenvalues, get the largest one
+  LargestEigenVal <- max(EigenValX, na.rm = TRUE)
+  
+  return(LargestEigenVal)
+  
+}
+
+calcStepScore <- function(mX,mY, prevBeta, currBeta, mXtX, n, lambda, alpha, D){
+  # CalcStepScore: Calculates the % improvement between the k-1th and kth set of beta's
+  # 
+  # Parameters:
+  #   prevBeta: double, k-1th beta
+  #   currbeta: double, kth beta
+  #   mX: Dataframe of n x p (n = observations, p = independent variables)
+  # 
+  # Output: 
+  #   StepScore; double, % improvement between the RSS of the two sets of beta's
+  
+  # difference in RSS between previous and current set of beta's
+  diffRSS <- (calcLoss(mX, mY, mXtX, prevBeta, n, lambda, alpha, D) - calcLoss(mX, mY, mXtX, currBeta, n, lambda, alpha, D))
+  
+  # divide difference with previous score to get % change
+  StepScore <- diffRSS /calcLoss(mX, mY, mXtX, prevBeta, n, lambda, alpha, D)
+  
+  return(StepScore)
+  
+}
+
+calcRsquared <- function(mY, mYest, adjusted = FALSE, p=0, n=0){
+  # calcRsquared
+  #
+  # Calculates the r-squared
+  #
+  # Parameters:
+  #   Y: matrix, the true dependent variable   
+  #   Yest: matrix, the predicted dependent variable
+  #   (optional) adjusted: if True, return adjusted r squared
+  #   (optional) p: if adjusted is calculated, add number of variables
+  # 
+  # Output:
+  #   Rsquared: double, the Rsquared or adjusted Rsquared for a linear model
+  
+  # standardize Y, and Yest (mean of 0)
+  mStandY = mY - mean(mY)
+  mStandYest = mYest - mean(mYest)
+  
+  # calculate Rsquared
+  numerator <- (t(mStandY) %*% mStandYest)^2
+  denominator <- (t(mStandY) %*% mY) %*% (t(mStandYest) %*% mStandYest)
+  resultRsquared <- (numerator/denominator)
+  
+  # if want adjusted R squared, 
+  if(adjusted){
+    
+    adjRsquared = 1 - (((1-resultRsquared)*(n - 1))/(n-p-1))
+    resultRsquared <- adjRsquared
+  }
+  
+  return(resultRsquared)
+  
+}
+
+calcD <- function(prevBeta, epsilon){
+  D = diag(max(nrow(as.matrix(prevBeta)), ncol(as.matrix(prevBeta))))
+  for (i in 1:length(prevBeta)) {
+    D[i, i] = 1/max(epsilon, abs(prevBeta[i]))
+  }
+  #print(D)
+  return(D)
+}
+
+calcAinv <-function(n, mXtX, lambda, alpha, p, D){
+  A <- n^(-1) * mXtX + lambda*(1-alpha)* diag(p+1) + lambda* alpha * D
+  return(Ginv(A))
+}
+
+calcModelEN <- function(mX, mY, e, alpha, lambda){
+  # calcModelEN(based on previous calcModelMM)
+  #
+  # Run Elastic Net algorithm using the majorization in minimization (MM) algorithm
+  #
+  # Parameters:
+  #   X: Dataframe of n x p (n = observations, p = independent variables)
+  #   Y: Dataframe of n x 1 dependent variables (n = observations)
+  #   e: epsilon, parameter for threshold of improvement after which the algorithm should halt
+  #   alpha : parameter for the penalty term
+  #
+  # Output:
+  #   result: dataframe with attributes of the model: 
+  #       - Beta: dataframe, the calculated Beta's
+  #       - RSS: double, Sum of squared residuals
+  #       - Yest: dataframe, the predicted Y
+  #       - Rsquared: double, R^2 for the predicted Y
+  #       - AdjRsquared: Adjusted Rsquared
+  #       - Significance results: dataframe with significance results on the beta's
+  #       - Residuals: dataframe, Y - Yest.
+  #  
+  n <- nrow(mX)   # number of observations
+  p <- ncol(mX) - 1 # number of variables minues the intercept
+  
+  # set the previous beta variable to initial, random beta's
+  #### I DON'T UNDERSTNAD THIS
+  prevBeta <- runif(ncol(mX), min=0, max=1)
+  
+  # calculate X'X
+  mXtX <- t(mX) %*% mX
+  
+  # get largest eigenvalue for the square of independent variables
+  lambda <- lambda
+  
+  # set initial stepscore to 0, k to 1. 
+  StepScore <- 0
+  k <- 1
+  
+  # run until the improvement between k-1th and kth =< e
+  while (k == 1 | StepScore> e ){
+    
+    
+    # compute D # D, p*p diagonal matrix
+    # shall we chooose the same e?
+    D <- calcD(prevBeta, e)
+    
+    # compute inverse of A # A, p*p matrix
+    invA <- calcAinv(n, mXtX, lambda, alpha, p, D)
+    
+    # update Beta (based on: previous Beta, A and D)
+    currBeta <- n^(-1) * invA %*% t(mX) %*% mY
+    
+    # new stepscore, % difference in RSS between new Beta's and previous beta's
+    StepScore <- calcStepScore(mX,mY, prevBeta, currBeta, mXtX, n, lambda, alpha, D)
+    
+    # assign current beta's to prevBeta variable for next iteration
+    prevBeta <- currBeta
+    
+    # print the result for this step
+    #print(paste("STEP(K):", k, ", IMPROVEMENT:", StepScore ))
+    
+    # step to next k
+    k <- k + 1    
+  }
+  ## Calculate several attributes of the linear model, put in dataframes or doubles
+  
+  # final Beta's
+  BetaFinal <- as.matrix(currBeta)
+  
+  # calculate the loss of this final est.
+  RSScurrBeta <- calcLoss(mX, mY, mXtX, currBeta, n, lambda, alpha, D)
+  
+  # get the est. dependent variables
+  mYest <- mX %*% BetaFinal
+  
+  # get the r2 and adjusted r2
+  Rsquared <- calcRsquared(mY, mYest)
+  adjRsquared <- calcRsquared(mY,mYest, adjusted = T,  p, n)
+  
+  # get the residuals
+  Resi <- mY - mYest
+  
+  # get the results on significance
+#  dfSignificance <- calcSignificance(RSScurrBeta, mXtX, n, p, BetaFinal)
+  
+  # add these attributes together as a list to make it easily accessible
+  result <- list(Beta = BetaFinal, 
+                 RSS = RSScurrBeta, 
+                 Yest = mYest,
+                 Rsquared = Rsquared, 
+                 adjRsquared = adjRsquared, 
+                 #SignificanceResults = dfSignificance,
+                 Residuals = Resi, 
+                 n = n,
+                 p = p)
+  
+#  print(paste("MM Elastic Net for lambda = ",lambda, "is done." ))
+  return(result)
+}
+
+findModelMM <- function(mX, mY, e){
+  # findModelMM
+  #
+  # finds the best linear model, using the MM algorithm, by testing model with 1, 2...up to all variables in X
+  #
+  # Parameters:
+  #   mX: Matrix of n x p (n = observations, p = independent variables)
+  #   mY: Matrix of n x 1 dependent variables (n = observations)
+  #
+  # Output:
+  #   results: list with the results for each model version
+  
+  # get the number of independent variables used
+  nIndVar = ncol(mX) - 1
+  
+  # start at m = 1, create empty list to be filled with results
+  M = 1
+  results <- list()
+  
+  # for each m, check the best model and save the results
+  while(M <= nIndVar){
+    
+    M <- M + 1
+    
+    resultM <- calcModelMM(mX, mY, e, M)
+    
+    strSave <- paste0("Model with ", M-1, " variable(s)")
+    results[[strSave]] <- resultM
+    
+  }
+  
+  return(results)
+  
+}
+
+calcCV <- function(k, mX, mY, folds, e, alpha, lambda){
+MSE <-double() # a double list of MSE of all k
+nzero <- 0 #### IS IT TRUE
+  for (i in 1:k){
+    trainX <- mX[-folds[[i]],]
+    trainY <- mY[-folds[[i]],]
+    result <- calcModelEN(mX, mY, e, alpha, lambda)
+    print(paste("The ", i, "th fold is done."))
+    testX <- mX[folds[[i]],]
+    testY <- mY[folds[[i]],]
+    error <- testY -testX %*% result$Beta # best beta for one lambda setting
+    MSE = append(MSE, (1/length(testY)) * (t(error) %*% error))
+    nzero = sum(result$Beta ==0) +nzero
+  }
+oneLambda <- list(mean = mean(MSE), 
+                 sd = sd(MSE), 
+                 up  = max(MSE), 
+                 low = min(MSE),
+                 nzero = nzero/k)
+return(oneLambda)# statistics of a particular Lambda
+}
+
+tryLambda <- function(k, mX, mY, folds, e, alpha, lambdaSet){
+cvm <- list()
+cvsd <- list()
+cvup <- list()
+cvlo <- list()
+nzero <- list()
+for (lambda in lambdaSet){
+  print(paste("Cross validation starts with lambda =", lambda))
+  oneLambda = calcCV(k , mX, mY, folds, e, alpha, lambda)
+  cvm = append(cvm, oneLambda$mean)
+  cvsd = append(cvsd, oneLambda$sd)
+  cvup = append(cvup, oneLambda$up)
+  cvlo = append(cvlo, oneLambda$lo)
+  nzero = append(nzero, oneLambda$nzero)
+}
+CVresult<- list(lambda = lambdaSet,
+                cvm = as.numeric(unlist(cvm)),
+                cvsd = as.numeric(unlist(cvsd)),
+                cvup = as.numeric(unlist(cvup)), 
+                cvlo = as.numeric(unlist(cvlo)), 
+                nzero = as.integer(unlist(nzero)),
+                call = fit.elnet.cv[7],
+                name = fit.elnet.cv[8],
+                glm.fit = fit.elnet.cv[9],
+                lambda.min = 0.5,#lambdaSet(match(cvm, min(cvm)))
+                lambda.1se = 0.2)
+return(CVresult) # the same structure as fit.elnet.cv
+}
+
+#------------------DATA PROCESS--------------------
+# 0 Key variables
+#  vy0: raw 77*1 vector of dependent variable, without scaling
+#  mX0: raw 77*44 matrix of independent variables, without scaling
+#  vy: 77*1 vector of dependent variable, with scaling
+#  mX: 77*44 matrix of independent variables, with scaling
+
+
+# STEP 1 Load data into matrix/Omit irrelevant data
+library(matlib)
+library(stargazer)
+library(sjPlot)
+load("D:/BDS/2SML/week2_ridge_LASSO_ElasticNet/supermarket1996 .RData")
+dfData <- data.frame(supermarket1996)
+vy0 = dfData$GROCERY_sum # 77*1 vector, dependent variable
+drop <- c("GROCERY_sum","STORE", "CITY", "ZIP","GROCCOUP_sum", "SHPINDX") # variables to leave
+mX0 = dfData[,!(names(dfData) %in% drop)]# 77*44 matrix, independent variables/regressors
+rm(supermarket1996);rm(dfData);rm(drop) # remove used data to save memory space
+
+
+# STEP 2 Scale data into ~(0,1)/Transform the dataframe into matrix/vector
+mX <- as.matrix(scale(mX0))
+vy<- as.matrix(scale(vy0))
+
+# STEP 3 Divide data into k = 5 folds
+# Create k = 5 list of elements, each list contain the index of the elements in that fold
+iK = 5
+lFolds = createFolds(mY, k =iK, list = TRUE, returnTrain = FALSE)
+#----------------APPLY ALGORITHM--------------------
+
+# STEP 1 Initialize parameters/environment
+set.seed(0) # to ensure stability
+e <- 0.0000000001 #
+alpha = 0.2
+#lambdaSet = c(10^-5, 10^-4, 10^-3,10^-2, 10^-1, 1, 10^1, 10^2, 10^3, 10^4)
+# I first test this lambdaSet in log() and found the maximum R**2 is around log(0)=1
+lambdaSet = 10^seq(-2, 6, length.out = 50)
+#lambdaSet = c(-0.2, -0.1, -0.05, -0.03, -0.0001, 0, 0.0001,0.03,0.05,0.1,0.2)
+# STEP 2 calculate the model using the MM algorithm, using the max (5) variables
+#for (lambda in lambdaSet){
+#modelEN <- calcModelEN(mX, vy, e, alpha, lambda)
+#print(paste("Its RSquared is :", modelEN[4]))
+#}
+
+
+# STEP 2 k-fold cross validation
+# retur
+cvResult <- tryLambda(2, mX, mY, folds, e, alpha, lambdaSet)
+fit.elnet.cv[2] = cvResult[2]
+fit.elnet.cv[3] = cvResult[3]
+fit.elnet.cv[4] = cvResult[4]
+fit.elnet.cv[5] = cvResult[5]
+fit.elnet.cv[6] = cvResult[6]
+plot(fit.elnet.cv, main="Elastic Net")

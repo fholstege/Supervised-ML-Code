@@ -238,11 +238,10 @@ listLambda <- 10^seq(-2, 10, length.out = 10)
 listAlpha <- 0
 ParamCombinations <- expand.grid(listLambda, listAlpha)
 
-r <- calcElasticNet(mXscaled, scale(mY), 1000, alpha = 0, e=0.000000000001)
+r <- calcElasticNet(mXscaled, mY, 1000, alpha = 0, e=0.000000000001)
 r$Beta
 
-result <- glmnet(mXscaled, mY, alpha = 0, lambda = 1000,
-                 standardize = FALSE)
+result <- glmnet(mXscaled, mY, alpha = 0, lambda = 1000)
 result$beta
 
 
