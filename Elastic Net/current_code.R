@@ -119,8 +119,6 @@ crossValidation = function (df, k, beta_init, lambda, alpha, tolerance) {
   #Create k equally size folds
   folds = createFolds(y, k = k, list = TRUE, returnTrain = FALSE)
   
-  print(folds)
-  
   #Perform k fold cross validation
   for(i in 1:length(folds)){
     
@@ -214,16 +212,11 @@ epsilon = 1e-12
 
 
 listLambda <- 10^seq(-2, 10, length.out = 50)
-listAlpha <- 0.0
+listAlpha <- seq(0,1,0.1)
 paramGrid <- expand.grid(listLambda, listAlpha)
 
 gridSearch <- HyperSearch(df, 20, paramGrid, Beta_init, tolerance)
-
-
-
-
-
-
+gridSearch_best <- 
 
 
 # plot results per lambda
@@ -232,8 +225,8 @@ plot(gridSearch$Lambda, gridSearch$avg_rmse, log = "x", col = "red", type = "p",
 
 
 ggplot() + 
-  geom_point(data = gridSearch, aes( x = log(Lambda), y = avg_rmse, col = 'Blue')) + 
-  geom_point(aes(x = log(result.cv$lambda), y = result.cv$cvm, col = 'Red')) +
+  geom_point(data = gridSearch, aes( x = log(Lambda), y = avg_rmse, col = 'Red')) + 
+  geom_point(aes(x = log(result.cv$lambda), y = result.cv$cvm, col = 'Blue')) +
   theme_minimal()
 
 
