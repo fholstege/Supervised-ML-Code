@@ -5,6 +5,7 @@ library(caret)
 library(glmnet)
 library(tidyverse)
 library(reshape2)
+library(stargazer)
 
 
 # calc_mD: Calculates diagonal matrix D
@@ -106,7 +107,7 @@ ElasticNetEst = function(mX, mY, beta_init, lambda, alpha, tolerance, epsilon, m
   return(Beta_current)
 }
 
-crossValidation = function (df, k, beta_init, lambda, alpha, tolerance) {
+crossValidation = function (df, k, beta_init, lambda, alpha, tolerance, folds) {
   
   total_rmse = 0
   n = nrow(df)
@@ -117,9 +118,6 @@ crossValidation = function (df, k, beta_init, lambda, alpha, tolerance) {
   df = scale(df)
   min_rsme = Inf 
   max_rsme = 0
-  
-  #Create k equally size folds
-  folds = createFolds(y, k = k, list = TRUE, returnTrain = FALSE)
   
   #Perform k fold cross validation
   for(i in 1:length(folds)){
@@ -172,6 +170,9 @@ HyperSearch = function(df, k, grid, beta_init, tolerance){
                         min_rsme = numeric(),
                         max_rsme = numeric())
   
+  #Create k equally size folds
+  folds = createFolds(y, k = k, list = TRUE, returnTrain = FALSE)
+  
   
   for(i in 1:nrow(grid)){
     
@@ -179,7 +180,7 @@ HyperSearch = function(df, k, grid, beta_init, tolerance){
     alpha = as.numeric(grid[i,][2])
     
     
-    result_cv = crossValidation(df, k, beta_init, lambda, alpha, tolerance)
+    result_cv = crossValidation(df, k, beta_init, lambda, alpha, tolerance, folds)
     result_row <- c(lambda, 
                     alpha,
                     result_cv$avg_rmse,
@@ -195,81 +196,138 @@ HyperSearch = function(df, k, grid, beta_init, tolerance){
 }
 
 
-set.seed(1)
+# set seed to ensure stability of results
+set.seed(0)
 
 # load the data
 load("supermarket1996.RData")
-df = subset(supermarket1996, select = -c(STORE, CITY, ZIP, GROCCOUP_sum, SHPINDX) )  
 
+# create dataframe with dependent and independent variables
+df = subset(supermarket1996, select = -c(STORE, CITY, ZIP, GROCCOUP_sum, SHPINDX) )
+y = scale(as.matrix(df[,1]))
+X = scale(as.matrix(df[,-1]))
 
-y = as.matrix(df[,1])
-X = as.matrix(df[,-1])
-
+# define the initial set of beta's
 Beta_init = as.matrix(runif(ncol(df)-1, min=-1, max=1))
 
+# define the parameters 
+tolerance = 0.0000000000001
+epsilon = 0.0000000000001
 
-tolerance = 0.1
-epsilon = 0.1
-
-10^-2
-
+# create grid of lambda and alpha combinations
 listLambda <- 10^seq(-2, 10, length.out = 50)
-listAlpha <- 0
+listAlpha <- seq(0.0,1,0.1)
 paramGrid <- expand.grid(listLambda, listAlpha)
 
-gridSearch <- HyperSearch(df, 10, paramGrid, Beta_init, tolerance)
+# find the results of gridsearch
+search_result <- HyperSearch(df, 10, paramGrid, Beta_init, tolerance)
+
+# show best set of parameters
+best_param <- search_result[search_result$avg_rmse==min(search_result$avg_rmse),]
+best_param
+best_lambda <- round(best_param$Lambda,2)
+best_alpha <- best_param$Alpha
+
+# Beta's for our estimate
+BetaEst <- ElasticNetEst(X, y, Beta_init, lambda = best_lambda, alpha = best_alpha, tolerance, epsilon)
+top_Beta <- data.frame(BetaEst) %>%
+  filter(abs(BetaEst) > 0.01)%>%
+  arrange(BetaEst)
+stargazer(top_Beta,
+          digits=2,
+          summary = FALSE)
 
 
-# plot results per lambda
-plot(gridSearch$Lambda, gridSearch$avg_rmse, log = "x", col = "red", type = "p", pch = 20,
-     xlab = expression(lambda), ylab = "RMSE", las = 1)
+
+# Beta's for glm.net estimate, same param as our ideal
+result.cv.ideal <- glmnet(scale(X), scale(y), alpha = best_alpha,
+                              lambda =best_lambda, nfolds = 10)
+glm.net_Beta <- as.matrix(result.cv.ideal$beta)
+colnames(glm.net_Beta) <- c("BetaEst")
+
+glm.net_top_Beta <- data.frame(glm.net_Beta) %>%
+  filter(abs(BetaEst) > 0.01)%>%
+  arrange(BetaEst)
+
+stargazer(glm.net_top_Beta,
+          digits=2,
+          summary = FALSE)
+
+
+# Beta's for glm.net estimate
+result.cv.lambda <- cv.glmnet(scale(X), scale(y), alpha = 0,
+                       lambda =listLambda, nfolds = 10)
 
 
 
-result.cv <- cv.glmnet(scale(X), scale(y), alpha = 0,
-                       lambda = 10^seq(-2, 10, length.out = 50), nfolds = 10)
+# compare convergence
+paramGrid_compare <- expand.grid(listLambda, best_alpha)
+
+search_compare <- search_result[search_result$Alpha == best_alpha,]
 
 
+df_compare = data.frame(lambda = log(listLambda), 
+                        MM = search_compare$avg_rmse, 
+                        GLM.NET = rev(result.cv.lambda$cvm))
+df_compare = melt(df_compare, id.vars = 'lambda', variable.name = 'series') 
+
+
+
+# plot compare to glm.net
 ggplot() + 
-  geom_point(data = gridSearch, aes( x = log(Lambda), y = avg_rmse, col="Red")) + 
-  geom_point(aes(x = log(result.cv$lambda), y = result.cv$cvm, col = "Blue")) +
-  theme_minimal() 
-
-
-dfBeta <- data.frame()
-
-for(lambda in listLambda){
-  
-  y = scale(as.matrix(df[,1]))
-  x = scale(as.matrix(df[,-1]))
-  
-  BetaEst <- ElasticNetEst(x, y, Beta_init, lambda, 0, tolerance, epsilon)
-  
-  dfBeta <- rbind(dfBeta, t(BetaEst))
-  
-}
-
-dfBeta <- cbind(dfBeta, listLambda)
-
-dfBetaViz <- melt(dfBeta ,  id.vars = 'listLambda', variable.name = 'series')
-
-ggplot(dfBetaViz, aes(log(listLambda),value)) + geom_line(aes(colour = series))
+  geom_point(data = df_compare, aes( x = lambda, y = value, col=series)) + 
+  theme_minimal() +
+  labs(y = "Average RMSE", 
+       x = "Log Lambda",
+       title = "At alpha = 0.2") + 
+  theme_classic() + 
+  theme(legend.title = element_blank())
 
 
 
+corr <- cor(X)
+
+#prepare to drop duplicates and correlations of 1     
+corr[lower.tri(corr,diag=TRUE)] <- NA 
+#drop perfect correlations
+corr[corr == 1] <- NA 
+#turn into a 3-column table
+corr <- as.data.frame(as.table(corr))
+#remove the NA values from above 
+corr <- na.omit(corr) 
+# only show large ones
+large_corr <- corr %>%
+  filter(abs(Freq)>0.7) %>%
+  distinct(Var1, .keep_all = TRUE) %>%
+  arrange(Freq)
+
+stargazer(large_corr, summary = FALSE)
 
 ####
 
+# 
+# dfBeta <- data.frame()
+# 
+# for(lambda in listLambda){
+#   
+#   y = scale(as.matrix(df[,1]))
+#   x = scale(as.matrix(df[,-1]))
+#   
+#   BetaEst <- ElasticNetEst(x, y, Beta_init, lambda, 0.3, tolerance, epsilon)
+#   
+#   
+#   dfBeta <- rbind(dfBeta, t(BetaEst))
+#   ==
+# }
+# 
+# dfBeta <- cbind(dfBeta, listLambda)
+# 
+# dfBetaViz <- melt(dfBeta ,  id.vars = 'listLambda', variable.name = 'series') %>%
+#   filter(abs(value) >0.01)
+# 
+# ggplot(dfBetaViz, aes(log(listLambda),value)) + geom_line(aes(colour = series))
+# 
 
-fit.elnet <- glmnet(x, y, nfolds=5, lambda = 10^seq(-2, 10, length.out = 50),alpha=0)
-
-fit.elnet.cv <- cv.glmnet(x, y, nfold = 5,lambda = 10^seq(-2, 10, length.out = 50),
-                          type.measure="mse", alpha=0,
-                          family="gaussian",
-                          standardize = TRUE)
-
-plot(fit.elnet, xvar="lambda")
-plot(fit.elnet.cv, main="Elastic Net")
 
 
 

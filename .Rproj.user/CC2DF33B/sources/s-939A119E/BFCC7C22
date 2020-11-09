@@ -1,0 +1,32 @@
+{
+    "id": "BFCC7C22",
+    "path": null,
+    "project_path": null,
+    "type": "r_dataframe",
+    "hash": "0",
+    "contents": "",
+    "dirty": false,
+    "created": 1604946638495.0,
+    "source_on_save": false,
+    "relative_order": 9,
+    "properties": {
+        "expression": "glm.net_Beta",
+        "caption": "glm.net_Beta",
+        "totalObservations": 44,
+        "displayedObservations": 44,
+        "variables": 1,
+        "cacheKey": "E4501CCB",
+        "object": "glm.net_Beta",
+        "environment": "",
+        "contentUrl": "grid_resource/gridviewer.html?env=&obj=glm.net_Beta&cache_key=E4501CCB&max_cols=50",
+        "preview": 0
+    },
+    "folds": "",
+    "lastKnownWriteTime": 7160568876482116154,
+    "encoding": "",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1604946638495,
+    "read_only": false,
+    "read_only_alternatives": []
+}
