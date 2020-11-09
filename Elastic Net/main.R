@@ -8,6 +8,18 @@ library(caret)
 library(glmnet)
 
 
+calcD = function(prevBeta, p, e){
+  
+  # Create the diagonal vector that will create diagonal matrix D
+  Diagonalise = vector(length=p)
+
+  for (i in 1:p) {
+      Diagonalise[i] <- 1 / max(abs(prevBeta[i]), e)
+  }
+  # Multiply the vector containing diagonals with Identity matrix to get D
+  return(Diagonalise * diag(p))
+}
+
 
 # calcTypeNet: calculates a often, used variable in subsequent computations λ(1 − α)I + λα.
 # This indicates the division between the lasso (a = 1) and ridge method (a = 0)
@@ -26,24 +38,37 @@ calcA <- function(mXtX,n, TypeNet){ (1/n) * mXtX + TypeNet}
 #
 #
 
-calcLoss <- function(mX,mXtX, mBeta, mY,mYtY,TypeNet, n, alpha){
+calcLoss <- function(mBeta, mYtY, n, alpha, lambda, mA){
 
-  c = (1/2*n) %*% mYtY + (1/2) * alpha * sum(abs(mBeta))
-  S = (t(mBeta) %*% t(mX) %*% mY)
+  c = (((2*n)^-1) %*% mYtY) + ((1/2) * lambda *alpha * sum(abs(mBeta)))
+  mXtY <- t(mX) %*% mY
   
-  U = ((1/n) * mXtX %*% TypeNet)
-  V = (1/n)* S
-  
-  
-  Z = t(mBeta) %*% U %*% mBeta
-  
+  lossResult <- ((1/2) * (t(mBeta) %*% mA %*% mBeta)) - ((1/n) * t(mBeta) %*% mXtY) + c
 
-  result = (1/2)* Z - V + c
-  
-  return(result)
+  return(lossResult)
   
   
 }
+
+
+# calcRSME
+
+calcRSME <- function(mX, mY, finalBeta, n){
+  
+  mYpredicted = mX %*% finalBeta
+  
+  error <- mY - mYpredicted
+  
+  MSE <- (1/n) * (t(error) %*% error)
+  
+  return(sqrt(RMSE))
+  
+  
+  
+}
+  
+  
+
 
 
 # calcElasticNet: calculates the Elastic net results for a given lambda, alpha
@@ -58,13 +83,16 @@ calcElasticNet <- function(mX,mY,lambda,alpha,e){
   
   
   # set the previous beta variable to initial, random beta's
-  prevBeta <- runif(p, min=0, max=10)
+  prevBeta <- runif(p, min=-1000, max=1000)
+  
+  print("Initial beta's")
+  print(prevBeta)
   
   # calculate X'X, y'y
   mXtX <- t(mX) %*% mX
   mYtY <- t(mY) %*% mY
+  mXtY <- t(mX) %*% mY
   
-
   # set initial stepscore to 0, k to 1. 
   StepScore <- 0
   k <- 1
@@ -72,40 +100,43 @@ calcElasticNet <- function(mX,mY,lambda,alpha,e){
   # run while, either if k is equal to 1, or the improvement between k-1th and kth set of beta's is smaller than the parameter e
   while (k == 1 | StepScore > e ){
     
+
+
     # step to next k
     k <- k + 1
     
-    
-    D <- 1/max(abs(prevBeta), e) * diag(p)
-    TypeNet <- calcTypeNet(lambda,alpha, D,p)
-    A <- calcA(mXtX, n, TypeNet)
-    
+    mD <- calcD(prevBeta, p, e)
 
-    currentBeta = (1/n) * inv(A) %*% t(mX) %*% mY
     
+    TypeNet <- calcTypeNet(lambda,alpha, mD,p)
+    mA <- calcA(mXtX, n, TypeNet)
 
-    prevScore <- calcLoss(mX, mXtX, prevBeta, mY, mYtY, TypeNet, n, alpha)
-    newscore <- calcLoss(mX, mXtX, currentBeta, mY, mYtY, TypeNet, n, alpha)
+
+    print("WE ARE HERE")
+    currentBeta =  solve(mA, (1/n) * mXtY)
     
-    StepScore <- (prevScore - newscore)/prevScore
+    prevScore <- calcLoss(prevBeta, mYtY, n, alpha, lambda, mA)
+    newScore <- calcLoss(currentBeta, mYtY, n, alpha, lambda, mA)
+
+    StepScore <- (prevScore - newScore)/prevScore
+    print("STEPSCORE: ")
+    print(StepScore)
     
     prevBeta <- currentBeta
     
   }
   
-  finalBeta <- prevBeta
+  RMSE <- calcRSME(mX, mY, prevBeta, n)
   
-  mYpredicted = mX %*% finalBeta
-  
-  error <- mY - mYpredicted
-  
-  RMSE <- (1/n) * (t(error) %*% error)
+
+  dfBeta <- data.frame(prevBeta)
+  rownames(dfBeta) <- colnames(mX)
   
   
   result = list(alpha = alpha,
                 lambda = lambda,
                 RMSE = RMSE,
-                Beta = finalBeta
+                Beta = dfBeta
     
   )
   
@@ -131,9 +162,17 @@ kfoldEval <- function(mX, mY,lambda, alpha, e, k){
     mXfold <- mX[-folds[[i]],]
     mYfold <- mY[-folds[[i]],]
     
+    mXtest <- mX[folds[[i]],]
+    mYtest <- mY[folds[[i]],]
+    
     result <- calcElasticNet(mXfold, mYfold, lambda, alpha, e)
     
-    totalRSME  = totalRSME + result$RMSE
+    BetaFold <- result$Beta
+    
+    foldRSME <- calcRSME(mXtest, mYtest, BetaFold, nrow(mX))
+    
+    
+    totalRSME  = totalRSME + foldRSME
 
 
   }
@@ -180,9 +219,12 @@ findHyperParam <- function(mX, mY, e, k, ParamCombinations){
   
 }
 
+
+getwd()
+setwd("Elastic Net")
+
 # load supermarket data
 load("supermarket1996.RData")
-summary(supermarket1996)
 
 # pick dependent and indpendent variable
 mY = as.matrix(supermarket1996$GROCERY_sum)
@@ -192,25 +234,18 @@ mX = as.matrix(supermarket1996[,-5:-1])
 mXscaled <- scale(mX)
 
 # list of all possible lambda's, and all possible alpha's, create grid of these
-listLambda <- 10^seq(-2, 10, length.out = 50)
+listLambda <- 10^seq(-2, 10, length.out = 10)
 listAlpha <- 0
 ParamCombinations <- expand.grid(listLambda, listAlpha)
 
-# find results per hyper parameter
-OverviewResults <- findHyperParam(mX, mY, e=0.000000000001, k=5, ParamCombinations)
-options(scipen = 999)
+r <- calcElasticNet(mXscaled, scale(mY), 1000, alpha = 0, e=0.000000000001)
+r$Beta
+
+result <- glmnet(mXscaled, mY, alpha = 0, lambda = 1000,
+                 standardize = FALSE)
+result$beta
 
 
-# plot results per lambda
-plot(Overview$Lambda, Overview$AvgRSME^.5, log = "x", col = "red", type = "p", pch = 20,
-     xlab = expression(lambda), ylab = "RMSE", las = 1)
+glm_RMSE <- calcRSME(mXscaled, mY, result$beta, nrow(mXscaled))
 
-# Compare with GLMnet
-#
-#
-
-result.cv <- cv.glmnet(mX, mY, alpha = 0,
-                       lambda = 10^seq(-2, 10, length.out = 50), nfolds = 5)
-plot(result.cv$lambda, result.cv$cvm^.5, log = "x", col = "red", type = "p", pch = 20,
-        xlab = expression(lambda), ylab = "RMSE", las = 1)
-
+r$RMSE[[1]] - glm_RMSE
