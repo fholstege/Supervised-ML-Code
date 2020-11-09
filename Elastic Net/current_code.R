@@ -1,66 +1,54 @@
-# load libraries
-library(MASS)
-library(matlib)
-library(caret)
-library(glmnet)
-library(tidyverse)
-library(reshape2)
-library(stargazer)
 
 
-# calc_mD: Calculates diagonal matrix D
-# Parameters
-#
-#
-
+# Calculates diagonal matrix D
 calc_mD = function(mBeta, p, epsilon){
   
   # Create the diagonal vector that will be filled with diagonal elements of D
   to_diagonalise = vector(length=p)
   
-  # get diagonal elements of D (max of mBeta_i, epsilon)
+  # Get diagonal elements of D (max of mBeta_i, epsilon)
   for (i in 1:p) {
     
     to_diagonalise[i] = 1 / max(abs(mBeta[i]), epsilon)
   }
-  
   # Multiply the vector containing diagonals with Identity matrix to get D
   return(to_diagonalise * diag(p))
 }
 
 
+# Calculates the loss function for the elastic
 elasticLoss = function(mBeta, mA, mXtY, mYtY, alpha, lambda, n){
   
+  # Calculate transposed matrix of Beta's
   transposed_mBeta = t(mBeta)
+  
   # Compute constant
   constant = (1/2*n) %*% mYtY + (1/2) * alpha * lambda *sum(abs(mBeta))
   
+  # Return loss function
   return(1/2 * (transposed_mBeta%*%mA%*%mBeta)-(1/n)*(transposed_mBeta%*%mXtY) + constant)
 }
 
-
-# calcTypeNet: calculates a often, used variable in subsequent computations λ(1 − α)I + λα.
+# Calculates a often, used variable in subsequent computations λ(1 − α)I + λα.
 # This indicates the division between the lasso (a = 1) and ridge method (a = 0)
-#  
-# 
-
 calc_typeNet = function(lambda, alpha, mD,p){
   lambda *(1 - alpha)*diag(p) + (lambda * alpha  * mD)
   }
 
+# Calculates the root mean squared error (RMSE)
 calcRMSE = function(X, y, est_beta, n){
   error = y - X %*% est_beta
   rsme = sqrt((1/n) * (t(error)%*%error))
 }
 
-
+# calculates estimate for the elastic net, given lambda and alpha, using MM algorithm
 ElasticNetEst = function(mX, mY, beta_init, lambda, alpha, tolerance, epsilon, max_iter = 100000){
   
   # Set iterations and improvement
   k = 1
   improvement = 0
   
-  # Define number of regressors and datapoints
+  # Define number of predictor variables and datapoints
   n = nrow(mX)
   p = ncol(mX)
   
@@ -69,17 +57,14 @@ ElasticNetEst = function(mX, mY, beta_init, lambda, alpha, tolerance, epsilon, m
   mXtY = crossprod(mX,mY)
   mYtY = crossprod(mY,mY)
   scaled_I = lambda * (1-alpha) * diag(p)
-  
-  
-  # get initial values for mD, mA
+
+  # get initial values for mD, mA, and Beta's
   mD = calc_mD(beta_init, p, epsilon)
   typeNetInit = calc_typeNet(lambda, alpha, mD, p)
   mA = 1/n * mXtX + typeNetInit
-  
-  
   Beta_prev = beta_init
   
-  
+  # start stepwise improvement of Beta's
   while (k == 1 | k < max_iter && (improvement > tolerance)) {
     
     # Increase number steps k
@@ -93,22 +78,24 @@ ElasticNetEst = function(mX, mY, beta_init, lambda, alpha, tolerance, epsilon, m
     # get new set of Beta's
     Beta_current = solve(mA, 1/n * mXtY)
     
-    
-    
+    # calculate loss function for previous, current Beta's - and the improvement
     loss_current = elasticLoss(Beta_current,mA, mXtY, mYtY, alpha, lambda, n)
-    
     loss_prev = elasticLoss(Beta_prev, mA, mXtY, mYtY, alpha, lambda, n)
-    
     improvement = (loss_prev - loss_current)/loss_prev
     
+    # set the previous beta's to current beta's for next step
     Beta_prev = Beta_current
     
   }
+  
+  # return est. Beta's
   return(Beta_current)
 }
 
+# k-fold crossvalidation of the elastic net
 crossValidation = function (df, k, beta_init, lambda, alpha, tolerance, folds) {
   
+  # save 
   total_rmse = 0
   n = nrow(df)
   
@@ -127,18 +114,22 @@ crossValidation = function (df, k, beta_init, lambda, alpha, tolerance, folds) {
     test = df[folds[[i]],]
     train = df[-folds[[i]],]
     
-    
+    # define train and test set for y and x
     y_train = as.matrix(train[,1])
     X_train = as.matrix(train[,-1])
-    
     y_test = as.matrix(test[,1])
     X_test = as.matrix(test[,-1])
     
+    # get est. Beta's from the elastic net
     Beta_est = ElasticNetEst(X_train, y_train, beta_init, lambda, alpha, tolerance, epsilon)
     
+    # define rmse for this set of lambda, alpha
     rmse = calcRMSE(X_test, y_test, as.matrix(Beta_est), nrow(X_test))
+    
+    # add current rms to total, to tlater take average
     total_rmse = total_rmse + rmse
     
+    # save min and max of rmse
     if(rmse > max_rsme){
       max_rsme = rmse
     }else if (rmse < min_rsme){
@@ -146,8 +137,7 @@ crossValidation = function (df, k, beta_init, lambda, alpha, tolerance, folds) {
     }
     
   }
-  
-  
+  # calculate the avg. rmse across the folds
   avg_rmse = total_rmse / length(folds)
   
   # returns results
@@ -162,25 +152,30 @@ crossValidation = function (df, k, beta_init, lambda, alpha, tolerance, folds) {
   
 }
 
+# search the  hyperparameters lambda, alpha that minimize rmse in k-fold
 HyperSearch = function(df, k, grid, beta_init, tolerance){
   
+  # empty dataframe 
   results <- data.frame(Lambda= numeric(), 
                         Alpha= numeric(),
                         avg_rmse = numeric(), 
                         min_rsme = numeric(),
                         max_rsme = numeric())
   
-  #Create k equally size folds
+  # create k equally size folds
   folds = createFolds(y, k = k, list = TRUE, returnTrain = FALSE)
   
-  
+  # iterate over the grid
   for(i in 1:nrow(grid)){
     
+    # get current lambda & alpha
     lambda = as.numeric(grid[i,][1])
     alpha = as.numeric(grid[i,][2])
     
-    
+    # get result of cross validation for lambda, alpha
     result_cv = crossValidation(df, k, beta_init, lambda, alpha, tolerance, folds)
+    
+    # define row to add to dataframe with results
     result_row <- c(lambda, 
                     alpha,
                     result_cv$avg_rmse,
@@ -195,6 +190,14 @@ HyperSearch = function(df, k, grid, beta_init, tolerance){
   
 }
 
+# load libraries
+library(MASS)
+library(matlib)
+library(caret)
+library(glmnet)
+library(tidyverse)
+library(reshape2)
+library(stargazer)
 
 # set seed to ensure stability of results
 set.seed(0)
@@ -245,8 +248,9 @@ result.cv.ideal <- glmnet(scale(X), scale(y), alpha = best_alpha,
 glm.net_Beta <- as.matrix(result.cv.ideal$beta)
 colnames(glm.net_Beta) <- c("BetaEst")
 
+
 glm.net_top_Beta <- data.frame(glm.net_Beta) %>%
-  filter(abs(BetaEst) > 0.01)%>%
+  filter(abs(BetaEst) >= 0.01)%>%
   arrange(BetaEst)
 
 stargazer(glm.net_top_Beta,
@@ -285,8 +289,23 @@ ggplot() +
 
 
 
+corr <- cor(X)
 
+#prepare to drop duplicates and correlations of 1     
+corr[lower.tri(corr,diag=TRUE)] <- NA 
+#drop perfect correlations
+corr[corr == 1] <- NA 
+#turn into a 3-column table
+corr <- as.data.frame(as.table(corr))
+#remove the NA values from above 
+corr <- na.omit(corr) 
+# only show large ones
+large_corr <- corr %>%
+  filter(abs(Freq)>0.7) %>%
+  distinct(Var1, .keep_all = TRUE) %>%
+  arrange(Freq)
 
+stargazer(large_corr, summary = FALSE)
 
 ####
 
