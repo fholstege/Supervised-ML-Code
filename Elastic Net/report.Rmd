@@ -14,14 +14,13 @@ knitr::opts_chunk$set(echo = TRUE)
 
 
 ## Introduction
-Location choice is critical to retail organization, due to its effect on supermarket success [@clarkson1996uk].  To choose the outlet location, previous studies have suggested that the location of supermarkets largely depends on local demographic profile [@baviera2016geomarketing]. Our study considers 45 demographic variables and tries to answer the research question: what demographic variables are important for predicting the revenue of supermarkets? We examine which variables make the biggest impact through an elastic net. This model is chosen because it has shown to work better than other regularized regressions, such as the least absolute shrinkage method (LASSO), when several variables are highly correlated [@zou2005regularization] We assess the best parameters for the model using k-fold cross validation to further prevent overfitting [@friedman2001elements]. We find that ... matter most. 
-
+Location choice is critical to retail organization, due to its effect on supermarket success [@clarkson1996uk].  To choose the outlet location, previous studies have suggested that the location of supermarkets largely depends on the local demographic profile [@baviera2016geomarketing]. Our study considers 45 demographic variables and tries to answer the research question: what demographic variables are important for predicting the revenue of supermarkets? We examine which variables have the biggest impact through an elastic net. This model is chosen because it has shown to work better than other regularized regressions, such as the least absolute shrinkage method (LASSO), when several variables are highly correlated [@zou2005regularization]. This is the case in our dataset. We assess the best parameters for the model using k-fold cross validation to further prevent overfitting [@friedman2001elements]. We find that the \% of households with children under 9 years old, \% unemployed, and \% of households with a mortgage matter most. 
 ## Data
-Our research works with a dataset of 45 demographic variables related to 77 supermarkets located around the Chicago area from the year of 1996. We define demographic data as data that reflects a profile of the customers; examples of such data included in our dataset are such as age, sex, income level, race, employment, homeownership, and level of education. A full description of each variable included can be found in table 1 of the appendix. Table 2 includes summary statistics. Past studies have indicated that these variables likely affect the supermarket turnover. For example, the variable of income has a relation to food consumption in supermarket [@jones1997analysis]; the variable of gender may influence the choice of supermarket [@beynon2010gender]; and the variable of race composition may have an impact on supermarket location[@lamichhane2013spatial]. Our response variable is yearly total turnover (\$). The demographic data were  derived from the U.S. government's (1990) census for the Chicago metropolitan area. We scale both the independent and dependent variables as follows:  
+Our research works with a dataset of 45 demographic variables related to 77 supermarkets located around the Chicago area from the year of 1996. We define demographic data as data that reflects a profile of the customers; examples of such data included in our data include age, sex, income level, race, employment, homeownership, and level of education. The variables are all continuous. A full description of each variable included can be found in table A of the appendix, and table B includes the summary statistics. Past studies have indicated that these variables likely affect the supermarket turnover. For example, the variable of income has a relation to food consumption in supermarkets [@jones1997analysis]; the variable of gender may influence the choice of supermarket [@beynon2010gender]; and the variable of race composition may have an impact on supermarket location[@lamichhane2013spatial]. Our response variable is yearly total turnover (\$). The demographic data were  derived from the U.S. government's (1990) census for the Chicago metropolitan area. We scale both the independent and dependent variables as follows:  
 \begin{align*}
-\tilde{X} = \frac{X - \mu}{\sqrt{\frac{\sum \boldsymbol{X^2}}{n-1} }}
+\mathbf{\tilde{X}} = \frac{\mathbf{X} - \mu}{\sqrt{\frac{\sum \boldsymbol{\mathbf{X}^2}}{n-1}}}
 \end{align*}
-Where $\tilde{X}$ is the scaled variable, $X$ is the unscaled variable,  $\mu$ is the mean of $\boldsymbol{X}$, and $n$ denotes the sample size. This scaling is done to ensure a fair interpretation of the model coefficients, as the range of each variable is different. Table 2 of the appendix shows that several variables are highly correlated. 
+Where $\tilde{X}$ is the scaled variable, $X$ is the unscaled variable,  $\mu$ is the mean of $\boldsymbol{X}$, and $n$ denotes the sample size. This scaling is done to ensure a fair interpretation of the model coefficients, as the range of each variable is different. Table C of the appendix shows that several variables are highly correlated. It is to be expected that characteristics such as income, home ownership, age etc. are to a large extent correlated. 
 
 ## Method 
 In short, our method is using an elastic net, which deals with overfitting by using a weighted average of the penalty terms applied in the LASSO and ridge regression. Before we explain the elastic net, let's consider the standard linear regression model:
@@ -31,34 +30,30 @@ In short, our method is using an elastic net, which deals with overfitting by us
 In which $\hat{\boldsymbol{y}}$ is an n x 1  column vector of the predicted response variable,
 $\mathbf{X}$ is an n x (p+1) matrix with n observations of p predictor variables and the intercept. $\boldsymbol{\hat{\beta}}$ is an (1 + p) x 1 column vector of the estimated coefficients for true parameter  $\boldsymbol{{\beta}}$ of the intercept and $p$ predictor variables. The standard method for finding the optimal $\boldsymbol{\beta}$ is the ordinary least squared (OLS) method that minimizes the sum of squared error between the predicted and observed response variables $\hat{\boldsymbol{y}}$ and ${\boldsymbol{y}}$. Thus the following loss function is minimized: 
 \begin{align*}
-    L(\boldsymbol{\beta}) = (\boldsymbol{y} - \mathbf{X}\boldsymbol{\beta})^T(\boldsymbol{y} - \mathbf{X}\boldsymbol{\beta})
+    L(\boldsymbol{\beta}) = (\boldsymbol{y} - \mathbf{X}\boldsymbol{\beta})^T(\boldsymbol{y} - \mathbf{X}\boldsymbol{\beta}).
 \end{align*}
-The problem with using this method is that it is prone to overfitting [@friedman2001elements]. This is because when applied to a training set, it often overestimates the effect of certain variables. In order to solve this, a new set of methods emerged called regularized regression, in which penalty terms are added to the above loss function in order to shrink the $\boldsymbol{\beta}$. Elastic net is a regularized regression that combines two penalty terms. 
+The problem with using this method is that it is prone to overfitting [@friedman2001elements]. This is because when applied to a training set, it often overestimates the effect of certain variables. To solve this problem, regularized regression methods can be used. These apply penalty terms to the above loss function in order to shrink the $\boldsymbol{\beta}$. Elastic net is a regularized regression that combines two penalty terms: 
 \begin{align*}
-    P_1(\boldsymbol{\beta}) = \lambda \sum_{i=1}^{p} \vert \beta_i \vert \hspace{35pt} P_2(\boldsymbol{\beta}) = \lambda \boldsymbol{\beta}^T\boldsymbol{\beta}
+    L_1(\boldsymbol{\beta}) = \lambda \sum_{i=1}^{p} \vert \beta_i \vert \hspace{35pt} L_2(\boldsymbol{\beta}) = \lambda. \boldsymbol{\beta}^T\boldsymbol{\beta}
 \end{align*}
-In which $P_1, P_2$ are the two penalty terms, and $\lambda$ is a constant parameter that determines their size. The $P_1$ is the sum of the absolute value of the coefficients, and is used in the so-called LASSO method [@tibshirani1996regression]. When this penalty term is used, coefficients are continuously reduced, or removed completely.
-
-But using just this penalty term has several downsides; it performs less well when $p \geq n$, and when several variables are highly correlated [@zou2005regularization] . Zhou and Hastie (2005) show that in these circumstances, the elastic net performs better than the Lasso, by adding a second penalty term, $P_2$. This is the same penalty used in a ridge regression [@hoerl1970ridge]. Elastic net then determines the weight between the two penalty terms, using the constant parameter $\alpha$. Given the high correlation between several of the variables in our dataset, it seems appropriate to use the elastic net. This gives the following loss function for an elastic net:
+In which $L_1, L_2$ are the two penalty terms, and $\lambda$ is a constant parameter that determines their size. The $P_1$ is the sum of the absolute value of the coefficients, and is used in the so-called LASSO method [@tibshirani1996regression]. When this penalty term is used, coefficients are continuously reduced, or removed completely. But using just this penalty term has several downsides; it performs less well when $p \geq n$, and when several variables are highly correlated [@zou2005regularization] . Zhou and Hastie (2005) show that in these circumstances, the elastic net performs better than the Lasso, by adding a second penalty term, $P_2$. This is the same penalty used in a ridge regression [@hoerl1970ridge]. Elastic net then determines the weight between the two penalty terms, using the constant parameter $\alpha$. Given the high correlation between several of the variables in our dataset, it seems appropriate to use the elastic net. This gives the following loss function:
 \begin{align*}
     L(\boldsymbol{\beta}) = (\boldsymbol{y} - \mathbf{X}\boldsymbol{\beta})^T(\boldsymbol{y} - \mathbf{X}\boldsymbol{\beta}) + \lambda \alpha \sum_{i=1}^{p} \vert \beta_i \vert + \lambda (1-\alpha) \boldsymbol{\beta}^T\boldsymbol{\beta}
 \end{align*}
 In order to find the $\boldsymbol{\beta}$ at which $L(\boldsymbol{\beta})$ is minimized, we use the majorize-minimization algorithm (MM). We use the following majorization function: 
 \begin{align*}
     L(\boldsymbol{\beta})=\frac{1}{2}\boldsymbol{\beta}^T(\mathbf{A})\boldsymbol{\beta} - n^{-1}\boldsymbol{\beta}^T\mathbf{X}^T\boldsymbol{y} + c \\
-    \mathbf{A} = n^{-1}\mathbf{X}^T\mathbf{X} + \lambda(1+\alpha)I + \lambda \alpha \mathbf{D}\\
+\end{align*}
+\begin{align*}
+    \mathbf{A} = n^{-1}\mathbf{X}^T\mathbf{X} + \lambda(1+\alpha)I + \lambda \alpha \mathbf{D} \hspace{35pt}
     \mathbf{D} = \begin{bmatrix}
-    \frac{1}{max(\beta_1, \epsilon)} & & \\
-    & \ddots & \\
-    & & \frac{1}{max(\beta_p, \epsilon)} \\
-  \end{bmatrix} \\
+    \frac{1}{max(\beta_1, \epsilon)} &0 &0 \\
+    0& \ddots & 0\\
+    0& 0& \frac{1}{max(\beta_p, \epsilon)} \\
+  \end{bmatrix} \hspace{35pt}
    c = \frac{1}{2n}\boldsymbol{y}^T\boldsymbol{y} + \frac{1}{2}\lambda\alpha  \sum_{i=1}^{p} \vert \beta_i \vert
 \end{align*}
-We then find the $\boldsymbol{\beta}$ for which this function is minimized through stepwise updating the $\boldsymbol{\beta}$. This happens by solving the following: 
-\begin{align*}
-   \hat{\boldsymbol{\beta_k}} = (\mathbf{A})^{-1}n^{-1}\mathbf{X}^T\boldsymbol{y}
-\end{align*}
-Where $\hat{\boldsymbol{\beta_k}}$ is the estimated $\boldsymbol{\beta}$ at step k. This stepwise updating continues until the next set of $\boldsymbol{\beta}$ does not improve by more than $\epsilon$. To find the $\lambda$ and $\alpha$ for our elastic net, we use K-fold cross validation. In this method, the dataset is split into $K$ random samples. One of the samples is picked as the validation test, and the $\boldsymbol{\beta}$ are determined based on the remaining K-1 samples. This then happens K times, until each of the samples is used as a validation test. For each iteration, we calculate the root mean squared error, and then the average RMSE across the K validations. 
+We then find the $\boldsymbol{\beta}$ for which this function is minimized through stepwise updating the $\boldsymbol{\beta}$. This happens by solving the following: $\hat{\boldsymbol{\beta_k}} = (\mathbf{A})^{-1}n^{-1}\mathbf{X}^T\boldsymbol{y}$. Here, $\hat{\boldsymbol{\beta_k}}$ is the estimated $\boldsymbol{\beta}$ at step k. This stepwise updating continues until the next set of $\boldsymbol{\beta}$ does not improve the loss functionby more than $\epsilon$. To find the $\lambda$ and $\alpha$ for our elastic net, we use K-fold cross validation. In this method, the dataset is split into $K$ random samples. One of the samples is picked as the validation set, and the $\boldsymbol{\beta}$ are determined based on the remaining K-1 samples. This then happens K times, until each of the samples is used as a validation set. For each iteration, we calculate the root mean squared error (RMSE), and then the average RMSE across the K validations. 
 \begin{align*}
     RMSE = \sqrt{ \frac{1}{n} \sum_{i=1}^{n} (\hat{\boldsymbol{y}} - \boldsymbol{y})^2 } \hspace{35pt} \text{Average RMSE} = \frac{1}{K}\sum_{i=1}^{K} RMSE_i 
 \end{align*}\
@@ -66,27 +61,133 @@ In which $RMSE_i$ is the RMSE of the validation on sample $i$. Our metric for pi
 
 \includegraphics[]{kfold.PNG}
 
-Using K-fold cross validation to pick the ideal $\lambda, \alpha$ reduces the likelihood of overfitting, since the parameters are not just based on one random sample, but on multiple, reducing the likelihood that features from one sample dominate when predicting. We fold our sample 10 times - this allows us to use a lot of different folds, without becoming computationally too expensive. We use RMSE to measure the error between our prediction and the actual values. The squaring of these errors ensures that larger errors contribute more, which reduces the chance of our model making large mistakes. When looking for our ideal $\lambda, \alpha$, we evaluate all possible combinations between the two following sets: 
-\begin{align*}
-    \alpha = [0,0.1,0.2...1] \hspace{35pt} x = \{x   \vert -2 \leq x \leq 10\} , \lambda = 10^x\\
-\end{align*}
+Using K-fold cross validation to pick the ideal $\lambda, \alpha$ reduces the likelihood of overfitting, since the parameters are not just based on one random sample, but on multiple, reducing the likelihood that features from one sample dominate when predicting. We fold our sample 10 times - this allows us to use a lot of different folds, without becoming computationally too expensive. We use RMSE to measure the error between our prediction and the actual values. The squaring of these errors ensures that larger errors contribute more to the loss function, which decreases the chance of our model making large mistakes. When searching for $\lambda$, $\alpha$, we evaluate all combinations between two sets. The first set containing all possible $\alpha$ values is defined as follows: $\alpha = \{0.1, 0.2,..., 1\}$. The set containing the $\lambda$ values is $\lambda = \{10^{x_{1}}, 10^{x_{2}},..., 10^{x_{50}}\}$ with $x$ increasing from $-2$ to $10$ in 50 steps.
 
 ## Results 
+By minimizing the RMSE of all $\alpha$ and $\lambda$ combinations, we find that an $\alpha$ of 0.2 and $\lambda$ of 0.1 produces the best fitted model. This indicates that in our problem more emphasis should be put on the $L_2$ penalty. This result is consistent with the findings in [@marquardt1975ridge], which found that in problems with highly correlated explanatory variables ridge regression performs best.
+
+To answer our research question on what variables are most important for the prediction of supermarket turnover we  analyse the estimated coefficients obtained by training on the scaled dataset. These are found in table \href{resultTable}. In this table only the coefficients with an absolute value higher than 0.01 are displayed, because any coefficients below this threshold are at least an order of magnitude smaller and thus have extremely little effect on our dependent variable. The coefficients represent change in our standardised dependent variable when the independent variable changes with one standard deviation. Thus the absolute size of the coefficient can be interpreted as the contribution of the variable for the prediction. From table \href{resultTable} we find that the three most influential variables are the $\%$ of households with children under nine years old, $\%$ unemployed and percentage of households with a mortgage. Here the first two are positive in their influence on supermarket turnover and the last one is negative.
+
+\begin{table}[!htbp] 
+  \scriptsize
+\centering 
+  \caption{Our Est. Coefficients} 
+  \label{resultTable} 
+\begin{tabular}{@{\extracolsep{5pt}} cc} 
+\\[-1.8ex]\hline 
+\hline \\[-1.8ex] 
+ Predictor Variable & Est. Coefficient \\ 
+\hline \\[-1.8ex] 
+$\%$ With Mortgage & $-0.17$ \\ 
+$\%$ of Women with children under 5 & $-0.16$ \\ 
+$\%$ of Working Women & $-0.16$ \\ 
+Population density & $-0.09$ \\ 
+$\%$ of Households with 5, 6 or 7 people & $-0.08$ \\ 
+$\%$ of Households with more than 5 people & $-0.08$ \\
+$\%$ of Avid Shoppers & $-0.05$ \\ 
+$\%$ of White Shoppers  & $-0.02$ \\ 
+$\%$ of Shopping Strangers & $-0.01$ \\ 
+$\%$ of population with income under $15,000\$$ & $0.02$ \\ 
+$\%$ of Households with more than 2 people & $0.04$ \\ 
+$\%$ of Households with Value over $200,000\$$ & $0.07$ \\ 
+$\%$ of Households with 1 person & $0.09$ \\ 
+$\%$ of Households with 3 or 4 persons & $0.12$ \\ 
+$\%$ of Households with Value over $150,000$ & $0.14$ \\ 
+$\%$ of Hurried Shoppers & $0.14$ \\ 
+$\%$ of Unemployed & $0.23$ \\ 
+$\%$ of Population under age $9$ &  $0.29$ \\ 
+\hline \\[-1.8ex] 
+\end{tabular} 
+\end{table}
+
+\subsection{Comparing our implementation to glmnet}
+To verify if our implementation of elastic net regression and hyperparameter search using 10-fold cross-validation is correct we compare our implementation's estimates to the estimates of an established library, called glmnet [@glmnet] The library finds betas that are equal to our implementation when rounded to 2 digits. As seen the betas are very similar to each other. Furthermore for the optimal $\alpha$ (0.2) we plot the RMSE against the log($\lambda$). Here we find the graphs differ in two ways, first the RMSE for our implementation converges to a different value than glmnet. Secondly the rate of convergence is different. Both of these differences are likely due to the fact that, dependent on the initial beta chosen, the MM algorithm is not guaranteed to converge to a global minimum in the loss. This also explains why are minimum RMSE value is slightly higher than that of glmnet.
+
+\includegraphics[]{GLM.ComparePlot.PNG}
+
+\section{Conclusion}
+In this report we analysed what variables are important for predicting the turnover of supermarkets. To do so we used an elastic net regression which was optimized using the MM algorithm. We find that the three most important variables for predicting turnover are the percentage of households with children under nine years old, percentage unemployed and percentage of households with a mortgage. Thus we can advice supermarkets to include these demographic variables in their location strategy. \\
+A limitation of this research is that the data was only gathered from Chicago and is quite old. It is possible that our findings are very location dependent and do not extend to the rest of the United States or world, or that cultural changes caused the effects to change. For further research including more data from a wider geological area or gathering new data might create new insights into the present day influence of demographic variables on supermarket turnover.
+
 
 
 
 ## Appendix
 
 
+### Table A: Description of variables
+\begin{table}[!htbp]
+\scriptsize
+\centering 
+\begin{tabular}{@{\extracolsep{5pt}} cc} 
+\\[-1.8ex]\hline 
+Variable Name & Description     \\ 
+\hline\\
+unemp         & \% of Unemployed                                        \\
+wrkch5        & \% of working women with children under 5               \\
+wrkch17       & \% of working women with children 6 - 17                \\
+nwrkch5       & \% of non-working women with children under 5           \\
+nwrkch17      & \% of non-working women with children 6 - 17            \\
+wrkch         & \% of working women with children                       \\
+nwrkch        & \% of non-working women with children                   \\
+wrkwch        & \% of working women with children under 5               \\
+wrkwnch       & \% of working women with no children                    \\
+telephn       & \% of households with telephones                        \\
+mortgage      & \% of households with mortgages                         \\
+nwhite        & \% of population that is non-white                      \\
+poverty       & \% of population with income under \$15,000             \\
+shopcons      & \% of Constrained Shoppers                              \\
+shophurr      & \% of Hurried Shoppers                                  \\
+shopavid      & \% of Avid Shoppers                                     \\
+shopstr       & \% of Shopping Stranges                                 \\
+shopunft      & \% of Unfettered Shoppers                               \\
+shopbird      & \% of Shopper Birds                                     \\
+shopindx      & Ability to Shop (Car and Single Family House)           \\
+shpindx       & Ability to Shop (Car and Single Family House)           \\
+store         & Store identification number                             \\
+city          & City of supermarket                                     \\
+Zip           & zip code                                                \\
+grocery\_sum  & Total turnover in one year of groceries(dollar)         \\
+groccoup\_sum & Total of redeemed grocery coupos ()                     \\
+age9          & \% population under age 9                               \\
+age60         & \% population over age 60                               \\
+ethnic        & \% Blacks and Hispanics                                 \\
+educ          & \% College Graduates                                    \\
+nocar         & \% With No Vehicles                                     \\
+income        & Log of median income                                    \\
+incsigma      & Standard deviation of income distribution(approximated) \\
+hsizeavg      & Average Household Size                                  \\
+hsize1        & \% of households with 1 person                          \\
+hsize2        & \% of households with 2 persons                         \\
+hsize34       & \% of households with 3 or 4 persons                    \\
+hsize567      & \% of households with 5 ore more persons                \\
+hh3plus       & \% of households with 3 or more persons                 \\
+hh4plus       & \% of households with 4 or more persons                 \\
+hhsingle      & \% Detached Houses                                      \\
+hhlarge       & \% of households with 5 or more persons                 \\
+workwom       & \% Working Women with full-time jobs                    \\
+sinhouse      & \% of households with 1 person                          \\
+density       & Trading Area in Sq Miles per Capita                     \\
+hval150       & \% of Households with Value over \$150,000              \\
+hval200       & \% of Households with Value over \$200,000              \\
+hvalmean      & Mean Household Value(Approximated)                      \\
+single        & \% of Singles                                           \\
+retired       & \% of Retired                                           \\ 
+\hline \\[-1.8ex] 
+\end{tabular}
+\end{table}
 
-### Table A: Summary Statistics 
+
+\newpage
+
+### Table B: Summary Statistics 
 
 \begin{table}[!htbp] \centering 
 \tiny
 \begin{tabular}{@{\extracolsep{5pt}}lccccccc} 
 \\[-1.8ex]\hline 
 \hline \\[-1.8ex] 
-Statistic & \multicolumn{1}{c}{N} & \multicolumn{1}{c}{Mean} & \multicolumn{1}{c}{St. Dev.} & \multicolumn{1}{c}{Min} & \multicolumn{1}{c}{Pctl(25)} & \multicolumn{1}{c}{Pctl(75)} & \multicolumn{1}{c}{Max} \\ 
+Predictor variable & \multicolumn{1}{c}{N} & \multicolumn{1}{c}{Mean} & \multicolumn{1}{c}{St. Dev.} & \multicolumn{1}{c}{Min} & \multicolumn{1}{c}{Pctl(25)} & \multicolumn{1}{c}{Pctl(75)} & \multicolumn{1}{c}{Max} \\ 
 \hline \\[-1.8ex] 
 GROCERY\_sum & 77 & 7,341,015.000 & 2,341,073.000 & 1,423,582.000 & 5,778,987.000 & 9,022,599.000 & 13,165,586.000 \\ 
 AGE9 & 77 & 0.138 & 0.025 & 0.046 & 0.121 & 0.151 & 0.193 \\ 
@@ -137,32 +238,32 @@ SHOPINDX & 77 & 0.736 & 0.246 & 0.00000 & 0.730 & 0.890 & 0.986 \\
 \end{tabular} 
 \end{table} 
 
+\newpage
 
-### Table B: Correlation Matrix
+### Table C: Variables that have an absolute correlation of more than 0.7
 \begin{table}[!htbp] \centering 
-  \caption{} 
-  \label{} 
+\tiny
 \begin{tabular}{@{\extracolsep{5pt}} cccc} 
 \\[-1.8ex]\hline 
 \hline \\[-1.8ex] 
- & Var1 & Var2 & Freq \\ 
+& Predictor Variable 1 & Predictor Variable 2 & Correlation \\ 
 \hline \\[-1.8ex] 
-1 & HSIZE1 & HSIZE34 & $$-$0.966$ \\ 
-2 & HSIZEAVG & HSIZE1 & $$-$0.908$ \\ 
-3 & HH4PLUS & HHSINGLE & $$-$0.887$ \\ 
-4 & MORTGAGE & SHPBIRD & $$-$0.869$ \\ 
-5 & SINHOUSE & SINGLE & $$-$0.862$ \\ 
-6 & WORKWOM & RETIRED & $$-$0.859$ \\ 
-7 & NOCAR & INCOME & $$-$0.835$ \\ 
-8 & SHPCONS & SHPHURR & $$-$0.810$ \\ 
-9 & HHLARGE & WRKWNCH & $$-$0.800$ \\ 
-10 & HHSINGLE & SINHOUSE & $$-$0.798$ \\ 
-11 & HSIZE2 & UNEMP & $$-$0.775$ \\ 
-12 & TELEPHN & NWHITE & $$-$0.761$ \\ 
-13 & RETIRED & WRKCH17 & $$-$0.727$ \\ 
-14 & SINGLE & TELEPHN & $$-$0.726$ \\ 
-15 & UNEMP & TELEPHN & $$-$0.726$ \\ 
-16 & ETHNIC & INCOME & $$-$0.720$ \\ 
+1 & HSIZE1 & HSIZE34 & $-$0.966 \\ 
+2 & HSIZEAVG & HSIZE1 & $-$0.908 \\ 
+3 & HH4PLUS & HHSINGLE & $-$0.887 \\ 
+4 & MORTGAGE & SHPBIRD & $-$0.869 \\ 
+5 & SINHOUSE & SINGLE & $-$0.862 \\ 
+6 & WORKWOM & RETIRED & $-$0.859 \\ 
+7 & NOCAR & INCOME & $-$0.835 \\ 
+8 & SHPCONS & SHPHURR & $-$0.810 \\ 
+9 & HHLARGE & WRKWNCH & $-$0.800 \\ 
+10 & HHSINGLE & SINHOUSE & $-$0.798 \\ 
+11 & HSIZE2 & UNEMP & $-$0.775 \\ 
+12 & TELEPHN & NWHITE & $-$0.761 \\ 
+13 & RETIRED & WRKCH17 & $-$0.727 \\ 
+14 & SINGLE & TELEPHN & $-$0.726 \\ 
+15 & UNEMP & TELEPHN & $-$0.726 \\ 
+16 & ETHNIC & INCOME & $-$0.720 \\ 
 17 & AGE9 & AGE60 & $-$0.700 \\ 
 18 & EDUC & INCSIGMA & $0.717$ \\ 
 19 & WRKCH5 & NWRKCH5 & $0.745$ \\ 

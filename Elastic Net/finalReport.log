@@ -1,9 +1,9 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.21 (TeX Live 2020/W32TeX) (preloaded format=pdflatex 2020.11.2)  9 NOV 2020 23:19
+This is pdfTeX, Version 3.14159265-2.6-1.40.21 (TeX Live 2020/W32TeX) (preloaded format=pdflatex 2020.11.2)  9 NOV 2020 23:26
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
-**report.tex
-(./report.tex
+**finalReport.tex
+(./finalReport.tex
 LaTeX2e <2020-10-01> patch level 2
 L3 programming layer <2020-10-27> xparse <2020-03-03> (c:/Users/flori/AppData/R
 oaming/TinyTeX/texmf-dist/tex/latex/base/article.cls
@@ -384,8 +384,9 @@ d-pdftex.def
 File: l3backend-pdftex.def 2020-09-24 L3 backend support: PDF output (pdfTeX)
 \l__kernel_color_stack_int=\count274
 \l__pdf_internal_box=\box49
-) (./report.aux)
-\openout1 = `report.aux'.
+)
+No file finalReport.aux.
+\openout1 = `finalReport.aux'.
 
 LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 67.
 LaTeX Font Info:    ... okay on input line 67.
@@ -436,22 +437,24 @@ Package: gettitlestring 2019/12/15 v1.6 Cleanup title references (HO)
 LaTeX Info: Redefining \ref on input line 67.
 LaTeX Info: Redefining \pageref on input line 67.
 LaTeX Info: Redefining \nameref on input line 67.
-(./report.out) (./report.out
-! I can't write on file `report.pdf'.
+\@outlinefile=\write3
+\openout3 = `finalReport.out'.
+
+! I can't write on file `finalReport.pdf'.
 (Press Enter to retry, or Control-Z to exit; default file extension is `.pdf')
 Please type another file name for output
 ! Emergency stop.
-\Hy@OutlineName ...utline goto name{#2}count#3{#4}
-                                                  
-l.1 ...\000o\000d\000u\000c\000t\000i\000o\000n}{}
-                                                  % 1 
+<to be read again> 
+                   \edef 
+l.67 \begin{document}
+                      
 Here is how much of TeX's memory you used:
- 10184 strings out of 481433
- 145957 string characters out of 5918820
- 424130 words of memory out of 5000000
- 26827 multiletter control sequences out of 15000+600000
+ 10181 strings out of 481433
+ 145999 string characters out of 5918820
+ 424240 words of memory out of 5000000
+ 26830 multiletter control sequences out of 15000+600000
  538078 words of font info for 30 fonts, out of 8000000 for 9000
  14 hyphenation exceptions out of 8191
- 66i,1n,72p,240b,271s stack positions out of 5000i,500n,10000p,200000b,80000s
+ 66i,1n,72p,245b,271s stack positions out of 5000i,500n,10000p,200000b,80000s
 
 !  ==> Fatal error occurred, no output PDF file produced!

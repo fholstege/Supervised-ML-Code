@@ -2,8 +2,6 @@
 title: "Which Variables help in predicting supermarket revenue? Evidence from Chicago"
 output:
   pdf_document: default
-  html_document:
-    df_print: paged
 bibliography: bibliography.bibtex
 ---
 
@@ -14,33 +12,184 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## R Markdown
 
-\begin{table}[!htbp] 
-  \centering 
-  \caption{Our Est. Coefficients} 
-  \label{} 
+## References{#Reference}
+
+<div id="refs"></div>
+
+\section{Appendix}
+
+
+### Table A: Description of variables
+\begin{table}[!htbp]
+\scriptsize
+\centering 
 \begin{tabular}{@{\extracolsep{5pt}} cc} 
 \\[-1.8ex]\hline 
+Variable Name & Description     \\ 
+\hline\\
+unemp         & \% of Unemployed                                        \\
+wrkch5        & \% of working women with children under 5               \\
+wrkch17       & \% of working women with children 6 - 17                \\
+nwrkch5       & \% of non-working women with children under 5           \\
+nwrkch17      & \% of non-working women with children 6 - 17            \\
+wrkch         & \% of working women with children                       \\
+nwrkch        & \% of non-working women with children                   \\
+wrkwch        & \% of working women with children under 5               \\
+wrkwnch       & \% of working women with no children                    \\
+telephn       & \% of households with telephones                        \\
+mortgage      & \% of households with mortgages                         \\
+nwhite        & \% of population that is non-white                      \\
+poverty       & \% of population with income under \$15,000             \\
+shopcons      & \% of Constrained Shoppers                              \\
+shophurr      & \% of Hurried Shoppers                                  \\
+shopavid      & \% of Avid Shoppers                                     \\
+shopstr       & \% of Shopping Stranges                                 \\
+shopunft      & \% of Unfettered Shoppers                               \\
+shopbird      & \% of Shopper Birds                                     \\
+shopindx      & Ability to Shop (Car and Single Family House)           \\
+shpindx       & Ability to Shop (Car and Single Family House)           \\
+store         & Store identification number                             \\
+city          & City of supermarket                                     \\
+Zip           & zip code                                                \\
+grocery\_sum  & Total turnover in one year of groceries(dollar)         \\
+groccoup\_sum & Total of redeemed grocery coupos ()                     \\
+age9          & \% population under age 9                               \\
+age60         & \% population over age 60                               \\
+ethnic        & \% Blacks and Hispanics                                 \\
+educ          & \% College Graduates                                    \\
+nocar         & \% With No Vehicles                                     \\
+income        & Log of median income                                    \\
+incsigma      & Standard deviation of income distribution(approximated) \\
+hsizeavg      & Average Household Size                                  \\
+hsize1        & \% of households with 1 person                          \\
+hsize2        & \% of households with 2 persons                         \\
+hsize34       & \% of households with 3 or 4 persons                    \\
+hsize567      & \% of households with 5 ore more persons                \\
+hh3plus       & \% of households with 3 or more persons                 \\
+hh4plus       & \% of households with 4 or more persons                 \\
+hhsingle      & \% Detached Houses                                      \\
+hhlarge       & \% of households with 5 or more persons                 \\
+workwom       & \% Working Women with full-time jobs                    \\
+sinhouse      & \% of households with 1 person                          \\
+density       & Trading Area in Sq Miles per Capita                     \\
+hval150       & \% of Households with Value over \$150,000              \\
+hval200       & \% of Households with Value over \$200,000              \\
+hvalmean      & Mean Household Value(Approximated)                      \\
+single        & \% of Singles                                           \\
+retired       & \% of Retired                                           \\ 
 \hline \\[-1.8ex] 
- Predictor Variable & Est. Coefficient \\ 
+\end{tabular}
+\end{table}
+
+
+\newpage
+
+### Table B: Summary Statistics 
+
+\begin{table}[!htbp] \centering 
+\tiny
+\begin{tabular}{@{\extracolsep{5pt}}lccccccc} 
+\\[-1.8ex]\hline 
 \hline \\[-1.8ex] 
-$\%$ With Mortgage & $-0.17$ \\ 
-$\%$ of Women with children under 5 & $-0.16$ \\ 
-$\%$ of Working Women & $-0.16$ \\ 
-Population density & $-0.09$ \\ 
-$\%$ of Households with 5, 6 or 7 people & $-0.08$ \\ 
-$\%$ of Households with more than 5 people & $-0.08$ \\
-$\%$ of Avid Shoppers & $-0.05$ \\ 
-$\%$ of White Shoppers  & $-0.02$ \\ 
-$\%$ of Shopping Strangers & $-0.01$ \\ 
-$\%$ of population with income under $15,000\$$ & $0.02$ \\ 
-$\%$ of Households with more than 2 people & $0.04$ \\ 
-$\%$ of Households with Value over $200,000\$$ & $0.07$ \\ 
-$\%$ of Households with 1 person & $0.09$ \\ 
-$\%$ of Households with 3 or 4 persons & $0.12$ \\ 
-$\%$ of Households with Value over $150,000$ & $0.14$ \\ 
-$\%$ of Hurried Shoppers & $0.14$ \\ 
-$\%$ of Unemployed & $0.23$ \\ 
-$\%$ of Population under age $9$ &  $0.29$ \\ 
+Predictor variable & \multicolumn{1}{c}{N} & \multicolumn{1}{c}{Mean} & \multicolumn{1}{c}{St. Dev.} & \multicolumn{1}{c}{Min} & \multicolumn{1}{c}{Pctl(25)} & \multicolumn{1}{c}{Pctl(75)} & \multicolumn{1}{c}{Max} \\ 
+\hline \\[-1.8ex] 
+GROCERY\_sum & 77 & 7,341,015.000 & 2,341,073.000 & 1,423,582.000 & 5,778,987.000 & 9,022,599.000 & 13,165,586.000 \\ 
+AGE9 & 77 & 0.138 & 0.025 & 0.046 & 0.121 & 0.151 & 0.193 \\ 
+AGE60 & 77 & 0.173 & 0.063 & 0.058 & 0.122 & 0.214 & 0.307 \\ 
+ETHNIC & 77 & 0.160 & 0.193 & 0.024 & 0.044 & 0.188 & 0.996 \\ 
+EDUC & 77 & 0.227 & 0.114 & 0.050 & 0.146 & 0.284 & 0.528 \\ 
+NOCAR & 77 & 0.113 & 0.132 & 0.012 & 0.025 & 0.144 & 0.551 \\ 
+INCOME & 77 & 10.616 & 0.293 & 9.867 & 10.414 & 10.797 & 11.236 \\ 
+INCSIGMA & 77 & 24,840.880 & 2,295.236 & 20,359.560 & 23,488.270 & 26,458.280 & 30,276.640 \\ 
+HSIZEAVG & 77 & 2.665 & 0.263 & 1.554 & 2.543 & 2.790 & 3.309 \\ 
+HSIZE1 & 77 & 0.245 & 0.083 & 0.122 & 0.200 & 0.269 & 0.614 \\ 
+HSIZE2 & 77 & 0.309 & 0.031 & 0.219 & 0.290 & 0.333 & 0.369 \\ 
+HSIZE34 & 77 & 0.330 & 0.060 & 0.092 & 0.306 & 0.367 & 0.446 \\ 
+HSIZE567 & 77 & 0.116 & 0.031 & 0.014 & 0.098 & 0.132 & 0.216 \\ 
+HH3PLUS & 77 & 0.446 & 0.083 & 0.106 & 0.405 & 0.490 & 0.650 \\ 
+HH4PLUS & 77 & 0.274 & 0.063 & 0.041 & 0.241 & 0.305 & 0.443 \\ 
+HHSINGLE & 77 & 0.245 & 0.083 & 0.122 & 0.200 & 0.269 & 0.614 \\ 
+HHLARGE & 77 & 0.116 & 0.031 & 0.014 & 0.098 & 0.132 & 0.216 \\ 
+WORKWOM & 77 & 0.358 & 0.053 & 0.244 & 0.312 & 0.402 & 0.472 \\ 
+SINHOUSE & 77 & 0.548 & 0.216 & 0.017 & 0.517 & 0.706 & 0.822 \\ 
+DENSITY & 77 & 0.001 & 0.001 & 0.0001 & 0.0004 & 0.001 & 0.005 \\ 
+HVAL150 & 77 & 0.349 & 0.246 & 0.003 & 0.123 & 0.534 & 0.917 \\ 
+HVAL200 & 77 & 0.186 & 0.186 & 0.001 & 0.043 & 0.268 & 0.781 \\ 
+HVALMEAN & 77 & 147.907 & 47.534 & 64.348 & 108.924 & 179.072 & 267.390 \\ 
+SINGLE & 77 & 0.280 & 0.068 & 0.203 & 0.242 & 0.286 & 0.593 \\ 
+RETIRED & 77 & 0.150 & 0.051 & 0.056 & 0.109 & 0.188 & 0.236 \\ 
+UNEMP & 77 & 0.182 & 0.023 & 0.142 & 0.166 & 0.195 & 0.245 \\ 
+WRKCH5 & 77 & 0.056 & 0.020 & 0.024 & 0.041 & 0.070 & 0.118 \\ 
+WRKCH17 & 77 & 0.124 & 0.029 & 0.041 & 0.103 & 0.144 & 0.198 \\ 
+NWRKCH5 & 77 & 0.084 & 0.028 & 0.030 & 0.064 & 0.101 & 0.169 \\ 
+NWRKCH17 & 77 & 0.070 & 0.021 & 0.018 & 0.059 & 0.082 & 0.122 \\ 
+WRKCH & 77 & 0.180 & 0.044 & 0.071 & 0.149 & 0.214 & 0.293 \\ 
+NWRKCH & 77 & 0.154 & 0.043 & 0.048 & 0.123 & 0.183 & 0.250 \\ 
+WRKWCH & 77 & 0.055 & 0.020 & 0.024 & 0.041 & 0.069 & 0.115 \\ 
+WRKWNCH & 77 & 0.258 & 0.044 & 0.157 & 0.227 & 0.282 & 0.460 \\ 
+TELEPHN & 77 & 0.977 & 0.029 & 0.839 & 0.976 & 0.993 & 0.998 \\ 
+MORTGAGE & 77 & 0.710 & 0.147 & 0.443 & 0.617 & 0.826 & 0.960 \\ 
+NWHITE & 77 & 0.204 & 0.194 & 0.035 & 0.091 & 0.205 & 0.995 \\ 
+POVERTY & 77 & 0.058 & 0.045 & 0.014 & 0.027 & 0.076 & 0.213 \\ 
+SHPCONS & 77 & 0.082 & 0.062 & 0.019 & 0.037 & 0.115 & 0.279 \\ 
+SHPHURR & 77 & 0.153 & 0.059 & 0.026 & 0.110 & 0.191 & 0.286 \\ 
+SHPAVID & 77 & 0.189 & 0.043 & 0.061 & 0.161 & 0.220 & 0.310 \\ 
+SHPKSTR & 77 & 0.284 & 0.066 & 0.184 & 0.232 & 0.330 & 0.558 \\ 
+SHPUNFT & 77 & 0.246 & 0.055 & 0.145 & 0.197 & 0.291 & 0.391 \\ 
+SHPBIRD & 77 & 0.046 & 0.025 & 0.004 & 0.025 & 0.064 & 0.105 \\ 
+SHOPINDX & 77 & 0.736 & 0.246 & 0.00000 & 0.730 & 0.890 & 0.986 \\ 
 \hline \\[-1.8ex] 
 \end{tabular} 
 \end{table} 
+
+\newpage
+
+### Table C: Variables that have an absolute correlation of more than 0.7
+\begin{table}[!htbp] \centering 
+\tiny
+\begin{tabular}{@{\extracolsep{5pt}} cccc} 
+\\[-1.8ex]\hline 
+\hline \\[-1.8ex] 
+& Predictor Variable 1 & Predictor Variable 2 & Correlation \\ 
+\hline \\[-1.8ex] 
+1 & HSIZE1 & HSIZE34 & $-$0.966 \\ 
+2 & HSIZEAVG & HSIZE1 & $-$0.908 \\ 
+3 & HH4PLUS & HHSINGLE & $-$0.887 \\ 
+4 & MORTGAGE & SHPBIRD & $-$0.869 \\ 
+5 & SINHOUSE & SINGLE & $-$0.862 \\ 
+6 & WORKWOM & RETIRED & $-$0.859 \\ 
+7 & NOCAR & INCOME & $-$0.835 \\ 
+8 & SHPCONS & SHPHURR & $-$0.810 \\ 
+9 & HHLARGE & WRKWNCH & $-$0.800 \\ 
+10 & HHSINGLE & SINHOUSE & $-$0.798 \\ 
+11 & HSIZE2 & UNEMP & $-$0.775 \\ 
+12 & TELEPHN & NWHITE & $-$0.761 \\ 
+13 & RETIRED & WRKCH17 & $-$0.727 \\ 
+14 & SINGLE & TELEPHN & $-$0.726 \\ 
+15 & UNEMP & TELEPHN & $-$0.726 \\ 
+16 & ETHNIC & INCOME & $-$0.720 \\ 
+17 & AGE9 & AGE60 & $-$0.700 \\ 
+18 & EDUC & INCSIGMA & $0.717$ \\ 
+19 & WRKCH5 & NWRKCH5 & $0.745$ \\ 
+20 & WRKCH17 & NWRKCH5 & $0.748$ \\ 
+21 & WRKCH & NWRKCH & $0.749$ \\ 
+22 & INCSIGMA & HVAL150 & $0.779$ \\ 
+23 & SHPHURR & SHOPINDX & $0.779$ \\ 
+24 & NWRKCH & SHPHURR & $0.790$ \\ 
+25 & INCOME & INCSIGMA & $0.796$ \\ 
+26 & HSIZE567 & HH3PLUS & $0.836$ \\ 
+27 & NWRKCH17 & NWRKCH & $0.838$ \\ 
+28 & NWHITE & POVERTY & $0.841$ \\ 
+29 & NWRKCH5 & WRKCH & $0.841$ \\ 
+30 & AGE60 & RETIRED & $0.877$ \\ 
+31 & HVAL150 & HVAL200 & $0.928$ \\ 
+32 & HVAL200 & HVALMEAN & $0.943$ \\ 
+33 & HSIZE34 & HH3PLUS & $0.959$ \\ 
+34 & HH3PLUS & HH4PLUS & $0.990$ \\ 
+35 & POVERTY & SHPCONS & $0.997$ \\ 
+\hline \\[-1.8ex] 
+\end{tabular} 
+\end{table} 
+
+
+
