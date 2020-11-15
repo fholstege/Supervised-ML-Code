@@ -1,0 +1,32 @@
+{
+    "id": "1FE529A8",
+    "path": null,
+    "project_path": null,
+    "type": "r_dataframe",
+    "hash": "0",
+    "contents": "",
+    "dirty": false,
+    "created": 1605480597452.0,
+    "source_on_save": false,
+    "relative_order": 7,
+    "properties": {
+        "expression": "df_compare_melted",
+        "caption": "df_compare_melted",
+        "totalObservations": "630",
+        "displayedObservations": "630",
+        "variables": "4",
+        "cacheKey": "04621C23",
+        "object": "df_compare_melted",
+        "environment": "",
+        "contentUrl": "grid_resource/gridviewer.html?env=&obj=df_compare_melted&cache_key=04621C23&max_cols=50",
+        "preview": "0"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 7234316385347526501,
+    "encoding": "",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1605480597452,
+    "read_only": false,
+    "read_only_alternatives": []
+}

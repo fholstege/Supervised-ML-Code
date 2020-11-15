@@ -21,41 +21,35 @@ library(dsmle)
 setwd("KRR")
 load("Airline.Rdata")
 
+# set seed for reproduction
+set.seed(123)
+
 # define independent and dependent variable
 mX = as.matrix(Airline[,-4])
 mX_scaled = scale(mX)
 mY = as.matrix(Airline[,4])
 
 
+## redundant - see if we want to use later?
+# define size of the training set
+train_size <- floor(0.75 * nrow(mX_scaled))
+train_index <- sample(seq_len(nrow(mX_scaled)), size = train_size)
+
+# separate out training and test
+mX_scaled_train = mX_scaled[train_index,]
+mX_scaled_test = mX_scaled[-train_index,]
+mY_train = mY[train_index,]
+mY_test = mY[-train_index,]
+
+
+
 # creates rbf kernel from independent variables
 create_RBF_kernel = function(mX, gamma){exp(-as.matrix(dist(mX)^2) * gamma)}
 
-# non homogeneous polynomial kernel
-create_nonhompolynom_kernel = function(mXXt, degree){(1 +  mXXt)^degree}
+# creates non homogeneous polynomial kernel
+create_nonhompolynom_kernel = function(mXXt, degree){((1 + mXXt)^degree)-1}
 
-
-# loss function for kernel ridge regression
-loss_krr = function(q_hat, mXXt, mY, mBeta_zero, lambda, J){
-  
-  # define the SSE for the intercept and the other beta's
-  SSE_intercept = sum(abs(mY - mBeta_zero[[1]])^2)
-  SSE_independent = sum(abs((J %*% mY) - q_hat ))
-  
-  # penalty term
-  penalty = lambda * (t(q_hat) %*% inv(mXXt) %*% q_hat)
-  
-  # combine, return loss
-  loss = SSE_intercept + SSE_independent + penalty 
-  return(loss)
-  
-}
-
-calcRMSE = function(mX, mY, est_beta, n){
- 
-  error <- mY - mX %*% est_beta
-  rsme <- sqrt((1/n) * (t(error)%*%error))
-}
-
+# implements k-fold cross validation for kernel ridge regression
 cv_kernel_ridge <- function(mX, mY, lambda, type_kernel,folds,param){
   
   # initial value for total rmse, min and max
@@ -82,25 +76,17 @@ cv_kernel_ridge <- function(mX, mY, lambda, type_kernel,folds,param){
     error <- y_test - cbind(1,X_test) %*% mBeta
     fold_RMSE <- sqrt((1/nrow(X_test)) * (t(error)%*%error))
     
+    # add to total RMSE to later average out
     total_RMSE = total_RMSE + fold_RMSE
     
   }
   
+  # compute average RMSE
   avg_RMSE = total_RMSE/length(folds)
   
-  other_hyperparam = NA
-  
-  if(type_kernel == "RBF"){
-    other_hyperparam = gamma
-  }else if (type_kernel == "nonhomopolynom"){
-    other_hyperparam = degree
-  }
-  
-  # returns result
+  # define results, including parameters
   result = list(avg_RMSE = avg_RMSE,
-                param = param
-                
-  )
+                param = param)
   
   return(result)
   
@@ -118,14 +104,13 @@ kernel_ridge <- function(mX, mY, type_kernel = "Linear", param){
   mXXt = mX %*% t(mX)
   mXtX = t(mX) %*% mX
   
+  ## create kernel based on type chosen
   if(type_kernel == "Linear"){
-    
-    # experiment with K
+  
     K = mXXt
     KtK = t(K) %*% K
     
-    
-  }else if(type_kernel == "nonhomopolynom"){
+  }else if(type_kernel == "nonhompolynom"){
     
     K = create_nonhompolynom_kernel(mXXt,param$degree)
     
@@ -139,36 +124,35 @@ kernel_ridge <- function(mX, mY, type_kernel = "Linear", param){
   # define J, using vector of 1s
   v_1 =  matrix(1, 1, n)
   J = diag(n)- ((1/n)*  t(v_1) %*% v_1)[[1]] 
-  #D = diag(eigen(K)$values^-2)
+  
+  # define U and d
   D = diag(1/eigen(K)$values)
- 
   U = eigen(K)$vectors
   
-  # find optimal intercept, and q
+  # find optimal intercept
   optimal_mBeta_zero = (1/n) * v_1 %*% mY
   
-  #lEig <- eigen(mK, symmetric = TRUE)
-  #mD <- diag(1 / lEig$values)
-  #mU <- lEig$vectors
+  # define shrunk matrix first, then find optimal intercept
   mShrunk = eigen(K)$values / (eigen(K)$values + outer(rep(1,n), param$lambda))
   optimal_q_hat = U %*% (mShrunk * as.vector(t(U) %*% mY))
-  
-  #mShrunk <- lEig$values / (lEig$values + outer(rep(1,iN), dLambda))  
-  #vQTilde <- lEig$vectors %*% (mShrunk * as.vector(t(mU) %*% vY))
-  
-  # use eigenvalues to quickly compute optimal Q
-  #optimal_q_hat = U %*% Ginv(diag(n) + lambda* D) %*% t(U) %*% (J %*% mY)
 
   # from q's, get other beta's
   beta_from_q_hat = inv(mXtX) %*% t(mX) %*% optimal_q_hat 
   
-  # define beta's together 
+  # add Beta's together with constant 
   mBeta_Intercept = rbind(optimal_mBeta_zero, beta_from_q_hat)
   
-  # find predicted values, sums of squared errors
+  # predict Y-hat
   yhat = optimal_q_hat + optimal_mBeta_zero[[1]]
+  
+  
+  ## to check - is this appropriate?
+  if (type_kernel == "RBF"){
+    yhat = optimal_q_hat
+  }
+  
+  # get error and RMSE   
   error = mY - yhat
-  SSE = sum(t(error)%*%error)
   RMSE = sqrt((1/n) * (t(error)%*%error))
   
   # return results as list
@@ -186,9 +170,10 @@ kernel_ridge <- function(mX, mY, type_kernel = "Linear", param){
 
 }
 
-
-hyperparam_search = function(mX, mY, k,type_kernel = "Linear", vlambda, vdegree = NA, vgamma = NA){
+# search for best lambda and other parameters 
+hyperparam_search = function(mX, mY, k,type_kernel, vlambda, vdegree = NA, vgamma = NA){
   
+  # define parameters based on type of kernel
   if(type_kernel == "Linear"){
     
     paramGrid <- expand.grid(vlambda)
@@ -199,25 +184,28 @@ hyperparam_search = function(mX, mY, k,type_kernel = "Linear", vlambda, vdegree 
     paramGrid <- expand.grid(vlambda, vgamma)
     colnames(paramGrid) <- c("lambda", "gamma")
     
-  }else if(type_kernel == "nonhomopolynom"){
-    
+  }else if(type_kernel == "nonhompolynom"){
+
     paramGrid <- expand.grid(vlambda, vdegree)
     colnames(paramGrid) <- c("lambda", "degree")
   }
   
-
   # create k equally size folds
   folds = createFolds(mY, k = k, list = TRUE, returnTrain = FALSE)
   
-  paramGrid$avg_RMSE = NA
+  # empty column, later to be filled
+  paramGrid$avg_RSME <- NA
 
   # iterate over the grid
   for(i in 1:nrow(paramGrid)){
     
+    # select parameters from the grid
     param <- paramGrid[i,]
 
+    # test these with k-fold
     cv_result <- cv_kernel_ridge(mX, mY, type_kernel = type_kernel, folds = folds, param = param)
 
+    #save the result
     paramGrid$avg_RSME[i] <- cv_result$avg_RMSE
 
     
@@ -226,115 +214,66 @@ hyperparam_search = function(mX, mY, k,type_kernel = "Linear", vlambda, vdegree 
   return(paramGrid)
 }
 
-
+# try out these different parameters
 lambda = 10^seq(-5, 5, length.out = 100)
 degree = seq(1,5,1)
 gamma = ncol(mX_scaled)^seq(-2,3,length.out =5)
 
-
 # grid search
 grid_result_linear <- hyperparam_search(mX_scaled, mY, 5, type_kernel = "Linear", vlambda = lambda)
-grid_result_nonhomopolynom <- hyperparam_search(mX_scaled, mY, 5, type_kernel = "nonhomopolynom", vlambda = lambda, vdegree = degree)
+grid_result_nonhompolynom <- hyperparam_search(mX_scaled, mY, 5, type_kernel = "nonhompolynom", vlambda = lambda, vdegree = degree)
 grid_result_RBF <- hyperparam_search(mX_scaled, mY, 5, type_kernel = "RBF", vlambda = lambda, vgamma = gamma)
 
 # get optimal parameters
-optimal_param_linear <- grid_result_linear[which.min(grid_result_linear$avg_resume),]
-optimal_param_nonhomopolynom <- grid_result_nonhomopolynom[which.min(grid_result_nonhomopolynom$avg_resume),]
-optimal_param_RBF <- grid_result_RBF[which.min(grid_result_RBF$avg_resume),]
+optimal_param_linear <- grid_result_linear[which.min(grid_result_linear$avg_RSME),]
+optimal_param_nonhompolynom <- grid_result_nonhompolynom[which.min(grid_result_nonhompolynom$avg_RSME),]
+optimal_param_RBF <- grid_result_RBF[which.min(grid_result_RBF$avg_RSME),]
+
+# compare for optimal to dsmle
+result_linear = kernel_ridge(mX_scaled, mY, type_kernel = "Linear", param = optimal_param_linear)
+result_nonhompolynom = kernel_ridge(mX_scaled, mY, type_kernel = "nonhompolynom", param = optimal_param_nonhompolynom)
+result_RBF = kernel_ridge(mX_scaled, mY, type_kernel = "RBF", param = optimal_param_RBF)
+
+# for the linear kernel, exactly the same predicted values as the dsmle package (only a difference of 15 decimals)
+result_dsmle_linear = krr(y=mY, X= mX, kernel.type = "linear", lambda = optimal_param_linear$lambda)
+result_dsmle_linear$yhat - result_linear$yhat
+
+# for the non homogeneous polynomial kernel, exactly the same predicted values as the dsmle package (only a difference of 15 decimals)
+result_dsmle_nonhompolynom = krr(y=mY, X= mX, kernel.type = "nonhompolynom", 
+                                 lambda = optimal_param_nonhompolynom$lambda, 
+                                 kernel.degree = optimal_param_nonhompolynom$degree)
+result_dsmle_nonhompolynom$yhat - (result_nonhompolynom$yhat)
+
+# result for the RBF - different, due to different kernel. Small difference
+result_dsmle_rbf =  krr(y=mY, X= mX, kernel.type = "RBF", 
+                        lambda = optimal_param_RBF$lambda, 
+                        kernel.RBF.sigma  =  2* optimal_param_RBF$gamma)
+
+result_dsmle_rbf$yhat - (result_RBF$yhat)
+
+# compare the kernels
+result_linear$RMSE
+result_nonhompolynom$RMSE
+result_RBF$RMSE
+
+# create dataframe for plot
+df_compare <- data.frame(index = 1:length(result_linear$yhat),
+                         rbf_yhat = result_RBF$yhat,
+                         nonhompolynom_yhat = result_nonhompolynom$yhat,
+                         linear_yhat = result_linear$yhat, 
+                         dsmle_rbf_yhat = result_dsmle_rbf$yhat,
+                         dsmle_nonhompolynom_yhat = result_dsmle_nonhompolynom$yhat,
+                         dsmle_linear_yhat = result_dsmle_linear$yhat,
+                         actual = mY)
+
+df_compare_melted = melt(df_compare, id.vars = "index") %>%
+  mutate(type = ifelse(str_detect(variable, "rbf"), "RBF",
+                       ifelse(str_detect(variable, "linear"),"linear",
+                              ifelse(str_detect(variable, "nonhompolynom"), "non-homogeneous polynomial", "Actual"))))
 
 
-
-
-
-
-
-
-
-
-
-
-# old code, need to rewrite
-### linear
-
-# first, get dsmle result
-r_dsmle_linear = krr(y=mY, X= mX, kernel.type = "linear", lambda =1000)
-
-
-# our result
-r_ours_linear = kernel_ridge(mX_scaled, mY, lambda=1000)
-
-# observe here that the two kernels are the same!
-mXXt_dsmle = r_dsmle_linear$K
-mXXt_dsmle
-mXXt_ours =r_ours_linear$K
-mXXt_ours
-
-# create df to compare predictions
-df_compare = data.frame(our_pred = r_ours_linear$yhat,
-                        dsmle_pred = r_dsmle_linear$yhat,
-                        actual = Airline$output,
-                        index = 1:length(r_ours_linear$yhat))
-
-df_compare = melt(df_compare, id.vars = "index")
-
-# show in plot
-ggplot(data = df_compare, aes(x = index, y = value, col = variable)) + 
+# plots to show differences
+ggplot(data = df_compare_melted %>%
+         filter(type %in% c("non-homogeneous polynomial", "Actual")), 
+       aes(x = index, y = value, col = variable)) + 
   geom_line()
-
-
-
-### RBF
-
-help(krr)
-
-# first, get dsmle result
-r_dsmle_rbf = krr(y=mY, X= mX, kernel.type = "RBF", kernel.RBF.sigma = ncol(mX)/2, lambda = 1000)
-
-# but our sse is much lower...different predicted values, most likely due to different beta's
-r_ours_rbf = kernel_ridge(mX_scaled, mY, lambda=1000, type_kernel = "RBF", gamma = 1/ncol(mX))
-
-# The two kernels are different! maybe due to difference in sigma/gamma
-mXXt_dsmle_rbf = r_dsmle_rbf$K
-mXXt_ours_rbf = r_ours_rbf$K
-
-
-# create df to compare predictions
-df_compare_rbf = data.frame(our_pred = r_ours_rbf$yhat,
-                        dsmle_pred = r_dsmle_rbf$yhat,
-                        actual = Airline$output,
-                        index = 1:length(r_ours_rbf$yhat))
-
-df_compare_rbf = melt(df_compare_rbf, id.vars = "index")
-
-# show in plot
-ggplot(data = df_compare_rbf, aes(x = index, y = value, col = variable)) + 
-  geom_line()
-
-
-### non-homogeneous polynomial
-
-
-# first, get dsmle result
-r_dsmle_nonhomopolynom = krr(y=mY, X= mX, kernel.type = "nonhompolynom", kernel.degree =2, lambda = 1/1000)
-
-# but our sse is much lower...different predicted values, most likely due to different beta's
-r_ours_nonhomopolynom = kernel_ridge(mX_scaled, mY, lambda=1000, type_kernel = "nonhompolynom", degree = 2)
-
-# The two kernels are different! maybe due to difference in sigma/gamma
-mXXt_dsmle_nonhomopolynom= r_dsmle_nonhomopolynom$K
-mXXt_ours_nonhomopolynom = r_ours_nonhomopolynom$K
-
-# create df to compare predictions
-df_compare_nonhomopolynom = data.frame(our_pred = r_ours_nonhomopolynom$yhat,
-                            dsmle_pred = r_dsmle_nonhomopolynom$yhat,
-                            actual = Airline$output,
-                            index = 1:length(r_ours_rbf$yhat))
-
-df_compare_nonhomopolynom = melt(df_compare_nonhomopolynom, id.vars = "index")
-
-# show in plot
-ggplot(data = df_compare_nonhomopolynom, aes(x = index, y = value, col = variable)) + 
-  geom_line()
-
-
-
