@@ -1,0 +1,247 @@
+"SML-AssignmentIIIv1.R
+Purpose: Estimate Elastic Nets via custom function and glmnet function and compare results based on supermarket data.
+
+Version [Only most relevant listed]:
+1
+4   Stan's adjustments - all kernel functions work
+5   
+6   Checken met krr.R
+7   lineair and nonhom working with package, RBF not yet
+8   all methods working.
+
+Notes Stans adjustments:
+- Package DSMLE installed.
+- Omit constant before calling package, otherwise following error: 
+  Error in eigen(K, symmetric = TRUE) : infinite or missing values in 'x'
+
+Questions: 
+- Do we want to take logarithms? Referring to Greene. 
+- Use ginv only when solve does not work?
+- Lines 152-154 (instead of 151) makes differences disappear. Solves the problem 
+  of non-invertible matrix.
+- Why (I + dLambda^-2) not invertible?
+- iNu/mXu still to implement
+
+
+Date:
+  2020/11/02
+
+Author:
+  Team 3 (TI-BDS)"
+#options(rgl.useNULL = TRUE, rgl.printRglwidget = TRUE)
+#if (!require("MASS")) install.packages("MASS")
+#if (!require("plotrix")) install.packages("plotrix")
+#if (!require("glmnet")) install.packages("glmnet")
+#if (!require("splines2")) install.packages("splines2")
+#if (!require("rgl")) install.packages("rgl")
+
+library(rstudioapi, quietly = TRUE)
+library(ggplot2, quietly = TRUE)
+library(latex2exp, quietly = TRUE)
+library(tictoc, quietly = TRUE)
+library(plotly, quietly = TRUE)
+library(MASS, quietly = TRUE)
+library(plotrix, quietly = TRUE)
+library(splines2, quietly = TRUE)
+library(rgl, quietly = TRUE)        
+library(glmnet, quietly = TRUE)
+library(xtable, quietly = TRUE) # LaTeX tables
+
+############################ Installing DMSLE package #######################
+#install.packages("devtools")
+#require(devtools)
+#if (!require("dsmle")) install.packages("dsmle_1.0-4.tar.gz", 
+#                                        repos = NULL, type = "source")
+#install.packages("dsmle_1.0-4.tar.gz", repo = 'https://mac.R-project.org')
+#devtools::install_local("dsmle_1.0-4.tar.gz")
+library(dsmle, quietly = TRUE)
+
+# cleaning
+rm(list = ls())
+graphics.off()
+
+# Set working directory
+setwd(dirname(getActiveDocumentContext()$path ))
+load("Airline.Rdata")
+
+# LinearKernel
+LinearKernel <- function(mX=NA, lKernelParams=NA){
+  "
+    Purpose:
+      Linear Kernel
+      
+    Inputs:
+      mX      matrix, prediction variables
+      
+    Return:
+      mK      matrix, kernel
+    "
+  
+  return(mX %*% t(mX))
+}
+
+# RBFKernel
+RBFKernel <- function(mX=NA, lKernelParams=NA){
+  "
+    Purpose:
+      RBF Kernel
+      
+    Inputs:
+      mX      matrix, prediction variables
+      
+    Return:
+      mK      matrix, kernel
+    "
+
+  iN <- nrow(mX)
+  mKTilde <- matrix(NA, nrow=iN, ncol=iN)
+  print(lKernelParams$dGamma)
+  for(i in 1:iN){
+    for(j in 1:iN){
+      vTemp <- mX[i,] - mX[j,]
+      mKTilde[i,j] <- -lKernelParams$dGamma * t(vTemp) %*% vTemp
+    }
+  }
+  mK <- exp(mKTilde)
+  # Patricks alternative:
+  dSigma <-  1 / (2 * lKernelParams$dGamma)
+  dSigma <- dSigma * ncol(mX)
+  mK  <- exp(-as.matrix(dist(mX)^2/dSigma))
+  return(mK)
+  }
+
+# NonHomKernel
+NonHomKernel <- function(mX=NA, lKernelParams=NA){
+  "
+    Purpose:
+      Inhomogeneous polynomial kernel of degree d
+      
+    Inputs:
+      mX      matrix, prediction variables
+      dD      double, degree polynomial
+      
+    Return:
+      mK      matrix, kernel
+    "
+  
+  return((1 +  mX %*% t(mX)) ^ lKernelParams$dD)
+}
+
+# Kernel Ridge 
+KernelRidge <-  function(vY=NA, mX=NA, dLambda=NA, fKernel=NA, lKernelParams = NA, mXu=NA, dC=NA){
+  "
+    Purpose:
+      Kernel Ridge Regression
+      
+    Inputs:
+      mX      matrix, prediction variables
+      dD      double, degree polynomial
+      
+    Return:
+      mK      matrix, kernel
+    "
+  
+  iN <- length(vY)
+  iP <- ncol(mX)
+  mJ <- diag(iN) - 1/iN
+  mK <- mJ %*% fKernel(mX, lKernelParams) %*% mJ
+  dW0 <- mean(vY)
+  if(iP > dC * iN){
+    vQTilde <- solve(diag(iN) + dLambda*solve(mK)) %*% (mJ %*% vY)
+  }
+  else{
+    # Before
+    lEig <- eigen(mK, symmetric = TRUE)
+    mD <- diag(1 / lEig$values)
+    mU <- lEig$vectors
+    mShrunk <- lEig$values / (lEig$values + outer(rep(1,iN), dLambda))  
+    vQTilde <- lEig$vectors %*% (mShrunk * as.vector(t(mU) %*% vY))
+  }
+  return(vQTilde)
+}
+
+## Main
+
+# Magic numbers
+sDep <- list('output')
+dGamma <- 0.5
+dLambda <- 100
+dC <- 2
+dD <- 2
+iNu <- 10
+fKernel <- NonHomKernel
+
+# Data initialisation
+dfData <- Airline
+vY <- as.vector(scale(dfData$output))
+mX <- as.matrix(dfData[,-which(names(dfData) %in% sDep)])
+iN <- length(vY)
+dSigma <- 1 / (2 * dGamma)
+lKernelParams = list('dGamma' = dGamma, 'dD' = dD)
+plot(vY, type='l')
+iNAirlines <- length(unique(mX[,'airline']))
+iNYears <- length(unique(mX[,'year']))
+mDummiesCross <- matrix(NA, nrow=iN, ncol=iNAirlines-1)
+for(i in 1:iNAirlines-1){
+  mDummiesCross[,i] <- (mX[,'airline']==i)
+}
+colnames(mDummiesCross) <- mX[1:iNAirlines-1, 'airline']
+mDummiesTime <- matrix(NA, nrow=iN, ncol=iNYears-1)
+for(i in 1:iNYears-1){
+  mDummiesTime[,i] <- (mX[,'year']==i)
+}
+colnames(mDummiesTime) <- mX[1:iNYears-1,'year']
+
+mX <- mX[,-which(colnames(mX) %in% list('airline','year'))]
+mX <- scale(cbind(mX, cbind(mDummiesCross, mDummiesTime)))
+mX <- cbind(matrix(1, nrow=iN, ncol=1), mX)           
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+######################Checking results#############################
+vQTildeLIN <- KernelRidge(vY=vY, mX=mX, dLambda=dLambda, fKernel=LinearKernel,
+                          lKernelParams = lKernelParams, mXu=NA, dC=dC)
+vQTildeRBF <- KernelRidge(vY=vY, mX=mX, dLambda=dLambda, fKernel=RBFKernel, 
+                          lKernelParams = lKernelParams, mXu=NA, dC=dC)
+vQTildeNH <- KernelRidge(vY=vY, mX=mX, dLambda=dLambda, fKernel=NonHomKernel, 
+                         lKernelParams = lKernelParams, mXu=NA, dC=dC)
+
+vQTildePackageLIN <- krr(y = vY, X = mX, lambda = dLambda, 
+                         kernel.type = "linear", kernel.degree = dD, 
+                         kernel.RBF.sigma = dSigma, center = FALSE, 
+                         scale = FALSE)
+vQTildePackageRBF <- krr(y = vY, X = mX, lambda = dLambda, kernel.type = "RBF", 
+                         kernel.degree = dD, kernel.RBF.sigma = dSigma, 
+                         center = FALSE, scale = FALSE)
+vQTildePackageNH <- krr(y = vY, X = mX, lambda = dLambda, 
+                        kernel.type = "nonhompolynom", kernel.degree = dD, 
+                        kernel.RBF.sigma = dSigma, center = FALSE, 
+                        scale = FALSE)
+
+#lines(vQTilde, col = "red")
+if(!is.null(dev.list())) dev.off()
+plot(vY, type = "l")
+lines(vQTildeLIN, col = 'red')
+lines(vQTildePackageLIN$yhat, col = 'red',type="l", lty=2)
+plot(vY, type = "l")
+lines(vQTildeNH, col = 'green')
+lines(vQTildePackageNH$yhat, col = 'green',type="l", lty=2)
+plot(vY, type = "l")
+lines(vQTildeRBF, col = 'blue')
+lines(vQTildePackageRBF$yhat, col = 'blue',type="l", lty=2)
+################################################################################
+  

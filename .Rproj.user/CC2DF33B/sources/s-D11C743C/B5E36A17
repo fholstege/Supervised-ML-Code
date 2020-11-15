@@ -1,24 +1,24 @@
 {
-    "id": "B98EF22A",
-    "path": "C:/Users/flori/Downloads/SML-Assignment-III-v6.R",
+    "id": "B5E36A17",
+    "path": "C:/Users/flori/Downloads/SML-Assignment-III-v8 (1).R",
     "project_path": null,
     "type": "r_source",
     "hash": "0",
     "contents": "",
     "dirty": false,
-    "created": 1605455253652.0,
+    "created": 1605469909411.0,
     "source_on_save": false,
-    "relative_order": 1,
+    "relative_order": 5,
     "properties": {
-        "cursorPosition": "98,0",
-        "scrollLine": "80"
+        "cursorPosition": "14,60",
+        "scrollLine": "0"
     },
     "folds": "",
-    "lastKnownWriteTime": 1605455252,
+    "lastKnownWriteTime": 1605469907,
     "encoding": "UTF-8",
     "collab_server": "",
     "source_window": "",
-    "last_content_update": 1605455252,
+    "last_content_update": 1605469907,
     "read_only": false,
     "read_only_alternatives": []
 }
