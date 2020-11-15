@@ -27,21 +27,10 @@ mY = as.matrix(Airline[,4])
 
 
 # creates rbf kernel from independent variables
-create_RBF_kernel = function(mXtX, gamma, n){
-  
-  # calculate distance matrix
-  XX <- matrix(1, n) %*% diag(mXtX)
-  D <- XX - 2*XtX + t(XX) # distance matrix
-  
-  # calculate rbf-kernel matrix
-  K <- exp(gamma* D)
-  
-  return(K)
-  
-}
+create_RBF_kernel = function(mX, gamma){exp(-as.matrix(dist(mX)^2) * gamma)}
 
+# non homogeneous polynomial kernel
 create_nonhompolynom_kernel = function(mXXt, degree){(1 +  mXXt)^degree}
-
 
 
 # loss function for kernel ridge regression
@@ -84,7 +73,8 @@ kernel_ridge <- function(mX, mY, lambda, type_kernel = "Linear", degree =1, gamm
     
   }else if(type_kernel == "RBF"){
     
-    K = create_RBF_kernel(mXtX, gamma, n)
+    K = create_RBF_kernel(mX, gamma)
+    
   }
   
   
@@ -92,13 +82,14 @@ kernel_ridge <- function(mX, mY, lambda, type_kernel = "Linear", degree =1, gamm
   v_1 =  matrix(1, 1, 90)
   J = diag(n)- ((1/n)*  t(v_1) %*% v_1)[[1]] 
   D = diag(eigen(K)$values^-2)
+ 
   U = eigen(K)$vectors
   
   # find optimal intercept, and q
   optimal_mBeta_zero = (1/n) * v_1 %*% mY
   
   # use eigenvalues to quickly compute optimal Q
-  optimal_q_hat = U %*% inv(diag(n) + lambda* D) %*% t(U) %*% (J %*% mY)
+  optimal_q_hat = U %*% Ginv(diag(n) + lambda* D) %*% t(U) %*% (J %*% mY)
 
   # from q's, get other beta's
   beta_from_q_hat = inv(mXtX) %*% t(mX) %*% optimal_q_hat 
@@ -132,24 +123,20 @@ kernel_ridge <- function(mX, mY, lambda, type_kernel = "Linear", degree =1, gamm
 r_dsmle_linear = krr(y=mY, X= mX_scaled, kernel.type = "linear", lambda =1/1000, scale=FALSE, center=FALSE)
 
 
-# but our sse is much lower...different predicted values, most likely due to different beta's
+# our result
 r_ours_linear = kernel_ridge(mX_scaled, mY, lambda=1000)
-r_ours$Beta
-r_ours$SSE
 
 # observe here that the two kernels are the same!
-mXXt_dsmle = r_dsmle$K
+mXXt_dsmle = r_dsmle_linear$K
 mXXt_dsmle
 mXXt_ours =r_ours_linear$K
 mXXt_ours
 
-
-
 # create df to compare predictions
-df_compare = data.frame(our_pred = r_ours$yhat,
-                        dsmle_pred = r_dsmle$yhat,
+df_compare = data.frame(our_pred = r_ours_linear$yhat,
+                        dsmle_pred = r_dsmle_linear$yhat,
                         actual = Airline$output,
-                        index = 1:length(r_ours$yhat))
+                        index = 1:length(r_ours_linear$yhat))
 
 df_compare = melt(df_compare, id.vars = "index")
 
@@ -162,37 +149,59 @@ ggplot(data = df_compare, aes(x = index, y = value, col = variable)) +
 ### RBF
 
 # first, get dsmle result
-r_dsmle_rbf = krr(y=mY, X= mX, kernel.type = "RBF", kernel.RBF.sigma = ncol(mX)/2, lambda = 1000)
+r_dsmle_rbf = krr(y=mY, X= mX, kernel.type = "RBF", kernel.RBF.sigma = 1/ncol(mX), lambda = 1000)
+help(krr)
 
 # but our sse is much lower...different predicted values, most likely due to different beta's
 r_ours_rbf = kernel_ridge(mX_scaled, mY, lambda=1000, type_kernel = "RBF", gamma = 1/ncol(mX))
 
+mXtX = t(scale(mX)) %*% (scale(mX))
+mXXt = scale(mX) %*% t(scale(mX))
 
-# observe here that if two kernels are the same!
+
+# The two kernels are different! maybe due to difference in sigma/gamma
 mXXt_dsmle_rbf = r_dsmle_rbf$K
-mXXt_dsmle_rbf
-mXXt_ours_rbf = 
-mXXt_ours
-
-
-# but our sse is much lower...different predicted values, most likely due to different beta's
-r_ours_rbf = kernel_ridge(mX_scaled, mY, lambda=1000)
-r_ours$Beta
-r_ours$SSE
+mXXt_ours_rbf = r_ours_rbf$K
 
 # create df to compare predictions
-df_compare = data.frame(our_pred = r_ours$yhat,
-                        dsmle_pred = r_dsmle$yhat,
+df_compare_rbf = data.frame(our_pred = r_ours_rbf$yhat,
+                        dsmle_pred = r_dsmle_rbf$yhat,
                         actual = Airline$output,
-                        index = 1:length(r_ours$yhat))
+                        index = 1:length(r_ours_rbf$yhat))
 
-df_compare = melt(df_compare, id.vars = "index")
+df_compare_rbf = melt(df_compare_rbf, id.vars = "index")
 
 # show in plot
-ggplot(data = df_compare, aes(x = index, y = value, col = variable)) + 
+ggplot(data = df_compare_rbf, aes(x = index, y = value, col = variable)) + 
   geom_line()
 
 
+### non-homogeneous polynomial
+
+
+# first, get dsmle result
+r_dsmle_nonhomopolynom = krr(y=mY, X= mX, kernel.type = "nonhompolynom", kernel.degree =2, lambda = 1000)
+
+
+# but our sse is much lower...different predicted values, most likely due to different beta's
+r_ours_nonhomopolynom = kernel_ridge(mX_scaled, mY, lambda=1000, type_kernel = "nonhompolynom", degree = 2)
+
+
+# The two kernels are different! maybe due to difference in sigma/gamma
+mXXt_dsmle_rbf = r_dsmle_rbf$K
+mXXt_ours_rbf = r_ours_rbf$K
+
+# create df to compare predictions
+df_compare_rbf = data.frame(our_pred = r_ours_rbf$yhat,
+                            dsmle_pred = r_dsmle_rbf$yhat,
+                            actual = Airline$output,
+                            index = 1:length(r_ours_rbf$yhat))
+
+df_compare_rbf = melt(df_compare_rbf, id.vars = "index")
+
+# show in plot
+ggplot(data = df_compare_rbf, aes(x = index, y = value, col = variable)) + 
+  geom_line()
 
 
 

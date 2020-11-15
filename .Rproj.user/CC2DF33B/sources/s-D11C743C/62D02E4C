@@ -12,13 +12,13 @@
     "properties": {
         "expression": "df_compare",
         "caption": "df_compare",
-        "totalObservations": "180",
-        "displayedObservations": "180",
-        "variables": "3",
-        "cacheKey": "9C346AA8",
+        "totalObservations": "90",
+        "displayedObservations": "90",
+        "variables": "4",
+        "cacheKey": "45C8EA4F",
         "object": "df_compare",
         "environment": "",
-        "contentUrl": "grid_resource/gridviewer.html?env=&obj=df_compare&cache_key=9C346AA8&max_cols=50",
+        "contentUrl": "grid_resource/gridviewer.html?env=&obj=df_compare&cache_key=45C8EA4F&max_cols=50",
         "preview": "0"
     },
     "folds": "",
