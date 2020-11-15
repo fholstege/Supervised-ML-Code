@@ -1,0 +1,231 @@
+"SML-AssignmentIIIv1.R
+Purpose: Estimate Elastic Nets via custom function and glmnet function and compare results based on supermarket data.
+
+Version [Only most relevant listed]:
+1
+4   Stan's adjustments - all kernel functions work
+5   
+6   Checken met krr.R
+
+Notes Stans adjustments:
+- Package DSMLE installed.
+- Problem with inverse in mX %*% t(mX) solved by using ginv.
+- Omit constant before calling package, otherwise following error: 
+  Error in eigen(K, symmetric = TRUE) : infinite or missing values in 'x'
+
+Questions: 
+- Do we want to take logarithms? Referring to Greene. 
+- Use ginv only when solve does not work?
+
+
+Date:
+  2020/11/02
+
+Author:
+  Team 3 (TI-BDS)"
+#options(rgl.useNULL = TRUE, rgl.printRglwidget = TRUE)
+#if (!require("MASS")) install.packages("MASS")
+#if (!require("plotrix")) install.packages("plotrix")
+#if (!require("glmnet")) install.packages("glmnet")
+#if (!require("splines2")) install.packages("splines2")
+#if (!require("rgl")) install.packages("rgl")
+
+library(rstudioapi, quietly = TRUE)
+library(ggplot2, quietly = TRUE)
+library(latex2exp, quietly = TRUE)
+library(tictoc, quietly = TRUE)
+library(plotly, quietly = TRUE)
+library(MASS, quietly = TRUE)
+library(plotrix, quietly = TRUE)
+library(splines2, quietly = TRUE)
+library(rgl, quietly = TRUE)        
+library(glmnet, quietly = TRUE)
+library(xtable, quietly = TRUE) # LaTeX tables
+
+############################ Installing DMSLE package #######################
+#install.packages("devtools")
+#require(devtools)
+#if (!require("dsmle")) install.packages("dsmle_1.0-4.tar.gz", 
+#                                        repos = NULL, type = "source")
+#install.packages("dsmle_1.0-4.tar.gz", repo = 'https://mac.R-project.org')
+#devtools::install_local("dsmle_1.0-4.tar.gz")
+library(dsmle, quietly = TRUE)
+
+# cleaning
+rm(list = ls())
+graphics.off()
+
+# Set working directory
+setwd(dirname(getActiveDocumentContext()$path ))
+load("Airline.Rdata")
+
+LinearKernel <- function(mX=NA, lKernelParams=NA){
+  "
+    Purpose:
+      Linear Kernel
+      
+    Inputs:
+      mX      matrix, prediction variables
+      
+    Return:
+      mK      matrix, kernel
+    "
+  
+  return(mX %*% t(mX))
+}
+
+RBFKernel <- function(mX=NA, lKernelParams=NA){
+  "
+    Purpose:
+      RBF Kernel
+      
+    Inputs:
+      mX      matrix, prediction variables
+      
+    Return:
+      mK      matrix, kernel
+    "
+
+  iN <- nrow(mX)
+  mKTilde <- matrix(NA, nrow=iN, ncol=iN)
+  print(lKernelParams$dGamma)
+  for(i in 1:iN){
+    for(j in 1:iN){
+      vTemp <- mX[i,] - mX[j,]
+      mKTilde[i,j] <- -lKernelParams$dGamma * t(vTemp) %*% vTemp
+    }
+  }
+  
+  # Patricks alternative:
+  # dGammaTilde <- dGamma * ncol(X)
+  # mK  <- exp(-as.matrix(dist(X)^2) * dGammaTilde)
+  
+  mK <- exp(mKTilde)
+  return(mK)
+  }
+
+NonHomKernel <- function(mX=NA, lKernelParams=NA){
+  "
+    Purpose:
+      Inhomogeneous polynomial kernel of degree d
+      
+    Inputs:
+      mX      matrix, prediction variables
+      dD      double, degree polynomial
+      
+    Return:
+      mK      matrix, kernel
+    "
+  
+  return((1 +  mX %*% t(mX)) ^ lKernelParams$dD)
+}
+
+# Kernel Ridge 
+KernelRidge <-  function(vY=NA, mX=NA, dLambda=NA, fKernel=NA, lKernelParams = NA, mXu=NA, dC=NA){
+  "
+    Purpose:
+      Kernel Ridge Regression
+      
+    Inputs:
+      mX      matrix, prediction variables
+      dD      double, degree polynomial
+      
+    Return:
+      mK      matrix, kernel
+    "
+  
+  iN <- length(vY)
+  iP <- ncol(mX)
+  mJ <- diag(iN) - 1/iN
+  mK <- mJ %*% fKernel(mX, lKernelParams) %*% mJ
+  dW0 <- mean(vY)
+  if(iP > dC * iN){
+    vQTilde <- solve(diag(iN) + dLambda*solve(mK)) %*% (mJ %*% vY)
+    #vQtilde <- ginv(diag(iN) + dLambda*solve(mK)) %*% (mJ %*% vY)
+  }
+  else{
+    lEig <- eigen(mK) #$ add symmetric = TRUE?
+    mU <- lEig$vectors
+    mD <- diag(lEig$values)
+    vQTilde <- mU %*% solve(diag(iN) + dLambda*mD^2) %*% (t(mU) %*% (mJ %*% vY))
+    #vQtilde <- mU %*% ginv(diag(iN) + dLambda*mD^2) %*% (t(mU) %*% (mJ %*% vY))
+  
+    #Patricks alternative:
+    lEig <- eigen(mK, symmetric = TRUE)
+    vInvEig <- as.numeric(lEig$values > 1e-10) * (lEig$values + as.numeric(lEig$values <= 1e-10) )^-1
+    mShrunk <- outer(lEig$values, rep(1, length(dLambda))) / (outer(lEig$values, rep(1, length(dLambda))) + outer(rep(1,iN), dLambda))  
+    a <- lEig$vectors %*% (mShrunk * outer(as.vector(t(lEig$vectors) %*% vY), rep(1, length(dLambda))) ) 
+    vYHat  <- a + mean(vY)
+    vQTilde <- vYHat
+    mEDF   <- colSums(mShrunk)
+  }
+  
+  # Patricks code:
+  #ei <- eigen(K, symmetric = TRUE)
+  #inv.eival <- as.numeric(ei$values > 1e-10) * (ei$values + as.numeric(ei$values <= 1e-10) )^-1
+  #shrink.mat <- outer(ei$values, rep(1, length(lambda))) / (outer(ei$values, rep(1, length(lambda))) + outer(rep(1,nrow(X)), lambda))
+  #a <- ei$vectors %*% (shrink.mat * outer(as.vector(t(ei$vectors) %*% y), rep(1, length(lambda))) ) 
+  #const <- mean(y)
+  #yhat  <- a + const
+  #edf   <- colSums(shrink.mat)
+
+  
+  return(vQTilde)
+}
+
+## Main
+
+# Magic numbers
+sDep <- list('output')
+dGamma <- 1
+dLambda <- 100
+dC <- 1 
+dD <- 1 
+iNu <- 10
+fKernel <- NonHomKernel
+
+# Data initialisation
+dfData <- Airline
+vY <- as.vector(scale(dfData$output))
+mX <- as.matrix(dfData[,-which(names(dfData) %in% sDep)])
+iN <- length(vY)
+lKernelParams = list('dGamma' = dGamma, 'dD' = dD)
+plot(vY, type='l')
+iNAirlines <- length(unique(mX[,'airline']))
+iNYears <- length(unique(mX[,'year']))
+mDummiesCross <- matrix(NA, nrow=iN, ncol=iNAirlines-1)
+for(i in 1:iNAirlines-1){
+  mDummiesCross[,i] <- (mX[,'airline']==i)
+}
+colnames(mDummiesCross) <- mX[1:iNAirlines-1, 'airline']
+mDummiesTime <- matrix(NA, nrow=iN, ncol=iNYears-1)
+for(i in 1:iNYears-1){
+  mDummiesTime[,i] <- (mX[,'year']==i)
+}
+colnames(mDummiesTime) <- mX[1:iNYears-1,'year']
+
+mX <- mX[,-which(colnames(mX) %in% list('airline','year'))]
+mX <- scale(cbind(mX, cbind(mDummiesCross, mDummiesTime)))
+#mX <- cbind(matrix(1, nrow=iN, ncol=1), mX)           
+
+vQTildeLIN <- KernelRidge(vY=vY, mX=mX, dLambda=dLambda, fKernel=fKernel,lKernelParams = lKernelParams, mXu=NA, dC=dC)
+vQTildeRBF <- KernelRidge(vY=vY, mX=mX, dLambda=dLambda, fKernel=RBFKernel, dGamma=dGamma, dD=dD, mXu=NA, dC=dC)
+vQTildeNH <- KernelRidge(vY=vY, mX=mX, dLambda=dLambda, fKernel=NonHomKernel, dGamma=dGamma, dD=dD, mXu=NA, dC=dC)
+
+vQTildePackageLIN <- krr(y = vY, X = mX, lambda = dLambda, kernel.type = "linear")
+vQTildePackageRBF <- krr(y = vY, X = mX, lambda = dLambda, kernel.type = "RBF")
+vQTildePackageNH <- krr(y = vY, X = mX, lambda = dLambda, kernel.type = "nonhompolynom")
+
+#lines(vQTilde, col = "red")
+
+plot(vY, type = "l")
+lines(vQTilde, col = 'red')
+lines(vQTildePackage$yhat, col = 'blue')
+
+
+#mKTest = fKernel(mX=mX, lKernelParams=lKernelParams)
+
+
+
+################################################################################
+  
