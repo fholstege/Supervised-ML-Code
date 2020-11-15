@@ -13,8 +13,6 @@ pacman::p_load(stargazer,
 install.packages("dsmle_1.0-4.tar.gz", repos = NULL, type="source")
 library(dsmle)
 
-
-
 # get dataset 
 load("Airline.Rdata")
 
@@ -38,6 +36,7 @@ create_RBF_kernel = function(mX, gamma, n){
   return(K)
   
 }
+
 
 # loss function for kernel ridge regression
 loss_krr = function(q_hat, mXXt, mY, mBeta_zero, lambda, J){
@@ -69,11 +68,14 @@ kernel_ridge <- function(mX, mY, lambda, type_kernel = "Linear"){
   # define J, using vector of 1s
   v_1 =  matrix(1, 1, 90)
   J = diag(n)- ((1/n)*  t(v_1) %*% v_1)[[1]] 
+  D = diag(eigen(mXXt)$values^-2)
+  U = eigen(mXXt)$vectors
   
   # find optimal intercept, and q
   optimal_mBeta_zero = (1/n) * v_1 %*% mY
   # use moore-penrose inverse here 
-  optimal_q_hat = inv(diag(n) + (lambda * Ginv(mXXt))) %*% J %*% mY
+  #optimal_q_hat = inv(diag(n) + (lambda * Ginv(mXXt))) %*% J %*% mY
+  optimal_q_hat = U %*% inv(diag(n) + 1000* D) %*% t(U) %*% J %*% mY
 
   # from q's, get other beta's
   beta_from_q_hat = inv(mXtX) %*% t(mX) %*% optimal_q_hat 
@@ -82,7 +84,7 @@ kernel_ridge <- function(mX, mY, lambda, type_kernel = "Linear"){
   mBeta_Intercept = rbind(optimal_mBeta_zero, beta_from_q_hat)
   
   # find predicted values, sums of squared errors
-  yhat = cbind(1,mX) %*% mBeta_Intercept
+  yhat = cbind(mXXt) %*% mBeta_Intercept
   SSE = sum((mY - yhat)^2)
   
   # return results as list
@@ -99,6 +101,9 @@ kernel_ridge <- function(mX, mY, lambda, type_kernel = "Linear"){
 
 }
 
+
+
+
 # first, get dsmle result
 r_dsmle = dsmle_result = krr(mY, mX, kernel.type = "linear", lambda =1000)
 r_dsmle$const
@@ -108,11 +113,11 @@ sum((r_dsmle$y - r_dsmle$yhat)^2)
 mXXt_dsmle = r_dsmle$K
 mXXt_ours = mX_scaled %*% t(mX_scaled)
 
+
 # but our sse is much lower...different predicted values, most likely due to different beta's
-r_ours = kernel_ridge(mX_scaled, mY, 1000)
+r_ours = kernel_ridge(mX_scaled, mY, lambda=1000)
 r_ours$Beta
 r_ours$SSE
-
 
 
 
