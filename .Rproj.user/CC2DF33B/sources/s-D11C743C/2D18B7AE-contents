@@ -29,20 +29,6 @@ mX = as.matrix(Airline[,-4])
 mX_scaled = scale(mX)
 mY = as.matrix(Airline[,4])
 
-
-## redundant - see if we want to use later?
-# define size of the training set
-train_size <- floor(0.75 * nrow(mX_scaled))
-train_index <- sample(seq_len(nrow(mX_scaled)), size = train_size)
-
-# separate out training and test
-mX_scaled_train = mX_scaled[train_index,]
-mX_scaled_test = mX_scaled[-train_index,]
-mY_train = mY[train_index,]
-mY_test = mY[-train_index,]
-
-
-
 # creates rbf kernel from independent variables
 create_RBF_kernel = function(mX, gamma){exp(-as.matrix(dist(mX)^2) * gamma)}
 
@@ -73,9 +59,9 @@ cv_kernel_ridge <- function(mX, mY, lambda, type_kernel,folds,param){
     mBeta = result$Beta
     
     # use the beta's from training set to test on test set
-    error <- y_test - cbind(1,X_test) %*% mBeta
-    fold_RMSE <- sqrt((1/nrow(X_test)) * (t(error)%*%error))
-    
+    error <- y_test - (cbind(1,X_test) %*% mBeta)
+    fold_RMSE <- sqrt(1/nrow(X_test)) * (t(error)%*%error)
+
     # add to total RMSE to later average out
     total_RMSE = total_RMSE + fold_RMSE
     
@@ -158,10 +144,12 @@ kernel_ridge <- function(mX, mY, type_kernel = "Linear", param){
   # return results as list
   result = list(Beta = mBeta_Intercept,
                 yhat = yhat,
-                SSE = SSE,
+                X = mX,
+                y = mY,
                 RMSE = RMSE,
-                K = K
-
+                K = K,
+                lambda = param$lambda,
+                param = param
   )
   
   return(result)
@@ -214,20 +202,44 @@ hyperparam_search = function(mX, mY, k,type_kernel, vlambda, vdegree = NA, vgamm
   return(paramGrid)
 }
 
+
 # try out these different parameters
-lambda = 10^seq(-5, 5, length.out = 100)
-degree = seq(1,5,1)
-gamma = ncol(mX_scaled)^seq(-2,3,length.out =5)
+vlambda = 10^seq(-5, 5, length.out = 50)
+vdegree = seq(1,5,1)
+vgamma = ncol(mX_scaled)^seq(-2,3,length.out =5)
+k = 5
 
 # grid search
-grid_result_linear <- hyperparam_search(mX_scaled, mY, 5, type_kernel = "Linear", vlambda = lambda)
-grid_result_nonhompolynom <- hyperparam_search(mX_scaled, mY, 5, type_kernel = "nonhompolynom", vlambda = lambda, vdegree = degree)
-grid_result_RBF <- hyperparam_search(mX_scaled, mY, 5, type_kernel = "RBF", vlambda = lambda, vgamma = gamma)
+grid_result_linear <- hyperparam_search(mX_scaled, mY, k, type_kernel = "Linear", vlambda = vlambda)
+grid_result_nonhompolynom <- hyperparam_search(mX_scaled, mY, k, type_kernel = "nonhompolynom", vlambda = vlambda, vdegree = vdegree)
+grid_result_RBF <- hyperparam_search(mX_scaled, mY, k, type_kernel = "RBF", vlambda = vlambda, vgamma = vgamma)
 
 # get optimal parameters
 optimal_param_linear <- grid_result_linear[which.min(grid_result_linear$avg_RSME),]
 optimal_param_nonhompolynom <- grid_result_nonhompolynom[which.min(grid_result_nonhompolynom$avg_RSME),]
 optimal_param_RBF <- grid_result_RBF[which.min(grid_result_RBF$avg_RSME),]
+
+# check if dsmle finds same optimal parameters
+cv_dsmle_linear = cv.krr(y=as.vector(mY), X= mX, kernel.type = "linear", lambda = list_lambda, k.folds = k)
+cv_dsmle_linear$lambda.min
+cv_dsmle_linear$rmse
+grid_result_linear$avg_RSME
+
+cv.krr
+
+
+# compare for optimal to dsmle
+result_linear = kernel_ridge(mX_scaled, mY, type_kernel = "Linear", param = test_param)
+result_dsmle_linear = krr(y=mY, X= mX, kernel.type = "linear", lambda = test_param$lambda)
+predict(result_dsmle_linear, mX)
+
+
+
+
+error = result_dsmle_linear$yhat - result_dsmle_linear$y
+RMSE = sqrt((1/nrow(mX)) * (t(error)%*%error))
+
+
 
 # compare for optimal to dsmle
 result_linear = kernel_ridge(mX_scaled, mY, type_kernel = "Linear", param = optimal_param_linear)

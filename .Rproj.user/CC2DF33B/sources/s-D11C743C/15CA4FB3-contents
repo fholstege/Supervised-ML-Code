@@ -102,3 +102,21 @@ loss_krr = function(q_hat, mXXt, mY, mBeta_zero, lambda, J){
 
 
 
+
+
+
+## redundant - see if we want to use later?
+# define size of the training set
+train_size <- floor(0.75 * nrow(mX_scaled))
+train_index <- sample(seq_len(nrow(mX_scaled)), size = train_size)
+
+# separate out training and test
+mX_scaled_train = mX_scaled[train_index,]
+mX_scaled_test = mX_scaled[-train_index,]
+mY_train = mY[train_index,]
+mY_test = mY[-train_index,]
+
+
+
+
+

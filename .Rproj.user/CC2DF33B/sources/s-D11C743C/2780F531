@@ -1,0 +1,25 @@
+{
+    "id": "2780F531",
+    "path": null,
+    "project_path": null,
+    "type": "object_explorer",
+    "hash": "0",
+    "contents": "",
+    "dirty": false,
+    "created": 1605526867091.0,
+    "source_on_save": false,
+    "relative_order": 11,
+    "properties": {
+        "id": "9db5bcdd151d4b4f8c1224a1d918f700",
+        "name": "result_dsmle_linear",
+        "title": "result_dsmle_linear"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 2947612899600,
+    "encoding": "",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1605526867092,
+    "read_only": false,
+    "read_only_alternatives": []
+}

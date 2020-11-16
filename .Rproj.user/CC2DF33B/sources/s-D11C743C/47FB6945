@@ -1,0 +1,25 @@
+{
+    "id": "47FB6945",
+    "path": null,
+    "project_path": null,
+    "type": "object_explorer",
+    "hash": "0",
+    "contents": "",
+    "dirty": false,
+    "created": 1605521844118.0,
+    "source_on_save": false,
+    "relative_order": 8,
+    "properties": {
+        "id": "701edc2c714c421abe7bc7d79a672aec",
+        "name": "cv_dsmle_linear",
+        "title": "cv_dsmle_linear"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 2947362734672,
+    "encoding": "",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1605521844118,
+    "read_only": false,
+    "read_only_alternatives": []
+}
