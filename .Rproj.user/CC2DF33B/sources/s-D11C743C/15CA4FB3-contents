@@ -12,9 +12,7 @@ r_ours_linear = kernel_ridge(mX_scaled, mY, lambda=1000)
 
 # observe here that the two kernels are the same!
 mXXt_dsmle = r_dsmle_linear$K
-mXXt_dsmle
 mXXt_ours =r_ours_linear$K
-mXXt_ours
 
 # create df to compare predictions
 df_compare = data.frame(our_pred = r_ours_linear$yhat,

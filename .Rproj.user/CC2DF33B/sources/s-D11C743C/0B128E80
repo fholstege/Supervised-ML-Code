@@ -1,0 +1,32 @@
+{
+    "id": "0B128E80",
+    "path": null,
+    "project_path": null,
+    "type": "r_dataframe",
+    "hash": "0",
+    "contents": "",
+    "dirty": false,
+    "created": 1605537448621.0,
+    "source_on_save": false,
+    "relative_order": 13,
+    "properties": {
+        "expression": "Airline",
+        "caption": "Airline",
+        "totalObservations": 90,
+        "displayedObservations": 90,
+        "variables": 6,
+        "cacheKey": "DFE5CD03",
+        "object": "Airline",
+        "environment": "",
+        "contentUrl": "grid_resource/gridviewer.html?env=&obj=Airline&cache_key=DFE5CD03&max_cols=50",
+        "preview": 0
+    },
+    "folds": "",
+    "lastKnownWriteTime": 2947628163600,
+    "encoding": "",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1605537448621,
+    "read_only": false,
+    "read_only_alternatives": []
+}
