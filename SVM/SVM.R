@@ -12,8 +12,7 @@ pacman::p_load(fastDummies,
 # load bank data
 load("bank.RData")
 
-# ensure that we can reproduce the code
-set.seed(1)
+
 
 # get dependent variable and transform
 mY <- bank[,ncol(bank)]
@@ -52,10 +51,10 @@ numeric_vars <- as.matrix(data.frame(mX$age,
 mX_var <- as.matrix(cbind(1, scale(numeric_vars),dummy_vars))
 
 
-create_hinge_param <- function(mY, z, type_hinge = "absolute"){
+create_hinge_param <- function(mY, z, type_hinge = "absolute", epsilon = 1e-08){
   
   m <- abs(1 - z)
-  
+  m <- m * (m > epsilon) + epsilon * (m <= epsilon)
 
   a <- .25 * m^-1
   b <- mY * (a + 0.25)
@@ -66,13 +65,19 @@ create_hinge_param <- function(mY, z, type_hinge = "absolute"){
                 c = c)
 }
 
-calc_loss <- function(z, type_loss = "absolute"){
-  vloss <- (1 > z) * (1 - z)
+calc_loss <- function(z, lambda, mWtW, type_loss = "absolute"){
+  
+  #penalty = lambda * mWtW
+  
+  vloss <- (1 > z) * (1 - z)# + penalty[[1]]
+  
   return(sum(vloss))
 }
 
+getHinge
 
-svm_mm <- function(mY, mX, hinge = "absolute", lambda = 100, epsilon = 0.00000001){
+
+svm_mm <- function(mY, mX, hinge = "absolute", lambda = 10, epsilon = 1e-08){
   
   # set initial weights and constant. From these, create initial v = c + w
   vW = runif(ncol(mX)-1, -1, 1)
@@ -91,6 +96,7 @@ svm_mm <- function(mY, mX, hinge = "absolute", lambda = 100, epsilon = 0.0000000
   k = 1
   stepscore = 0 
   
+  
   while(k ==1 || stepscore > epsilon){
     
     # get current prediction (q) and z
@@ -98,7 +104,7 @@ svm_mm <- function(mY, mX, hinge = "absolute", lambda = 100, epsilon = 0.0000000
     fCurrent_z = mY * mCurrent_q
     
     # get parameters given the y and z
-    lhinge_param = create_hinge_param(mY, fCurrent_z)
+    lhinge_param = create_hinge_param(mY, fCurrent_z, epsilon)
     
     # define A and b
     A = diag(as.vector(lhinge_param$a))
@@ -107,24 +113,27 @@ svm_mm <- function(mY, mX, hinge = "absolute", lambda = 100, epsilon = 0.0000000
     # get updated v
     vV_update = solve(t(mX) %*% A %*% mX + lambda * P, t(mX) %*% b)
     
+    mW = tail(vV_update,-1)
+    mWtW = t(mW) %*% mW
+
     # get new prediction (q) and z
     mNew_q = mX %*% vV_update
     fNew_z = mY * mNew_q
     
     # calculate new, and previous loss
-    fCurrent_loss = calc_loss(fCurrent_z)
-    fNew_loss = calc_loss(fNew_z)
+    fCurrent_loss = calc_loss(fCurrent_z, lambda, mWtW)
+    fNew_loss = calc_loss(fNew_z, lambda, mWtW)
     
     # calculate improvement
     stepscore <- (fCurrent_loss - fNew_loss)/fCurrent_loss
+    
+    print("improvement")
+    print(stepscore)
     
     # check: if all predicted correctly, turns to NaN since divided by zero
     if (is.na(stepscore)){
       stepscore = 0
     }
-    
-    print("improvement: ")
-    print(stepscore)
     
     # move to next iteration
     k = k + 1
@@ -135,11 +144,26 @@ svm_mm <- function(mY, mX, hinge = "absolute", lambda = 100, epsilon = 0.0000000
     
   }
   
-  lResults = list(v = v_previous,
+  mYhat = sign(mNew_q)
+  
+  #vPredict_outcome = ifelse(
+       #  mYhat == mY == 1, "true positive",
+       #  mYhat == mY == -1, "true negative",
+       #  myhat == 1, my == -1, "false positive", 
+       #  myhat == -1, my == 1, "false negative")
+  
+  
+  #dfPredict_overview = table(vPredict_outcome)
+  
+  
+  
+  
+  lResults = list(v = vV_update,
                   mY = mY,
                   mX = mX, 
                   loss = fCurrent_loss,
-                  yhat = sign(mNew_q))
+                  q = mNew_q,
+                  yhat = mYhat)
   
   return(lResults)
 
@@ -147,22 +171,47 @@ svm_mm <- function(mY, mX, hinge = "absolute", lambda = 100, epsilon = 0.0000000
   
 }
 
-#redundant 
+
+# ensure that we can reproduce the code
+set.seed(1)
 
 sample_id <- sample(4000, 1000)
+
+
 sample_x = mX_var[sample_id,]
 sample_y = mY_num[sample_id]
-
-
-
-
 
 result = svm_mm(sample_y, sample_x)
 result$v
 result$loss
-result$yhat
+
+mYhat = result$yhat
+sample_y <- as.matrix(sample_y)
+mYhat
+vPredict_outcome = ifelse(
+  (mYhat == sample_y & sample_y == 1), "true positive",
+  ifelse((mYhat == sample_y & sample_y == -1), "true negative",
+  ifelse((mYhat == 1 & sample_y == -1), "false positive", 
+  ifelse((mYhat == -1 & sample_y == 1), "false negative", NA))))
 
 
 
 
+dfPredict_overview = table(vPredict_outcome)
+dfPredict_overview
 
+
+result_svmmaj <- svmmaj(sample_x,sample_y, lambda = 10, scale = "none",hinge = "absolute")
+result_svmmaj$beta 
+result_svmmaj$loss
+result_svmmaj$q
+
+
+
+# check score
+
+# get current prediction (q) and z
+mCurrent_q = sample_x %*% result_svmmaj$beta 
+fCurrent_z = sample_y* mCurrent_q
+
+calc_loss(fCurrent_z)
