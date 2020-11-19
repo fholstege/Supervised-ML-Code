@@ -36,8 +36,8 @@ calc_typeNet = function(lambda, alpha, mD,p){
   }
 
 # Calculates the root mean squared error (RMSE)
-calcRMSE = function(X, y, est_beta, n){
-  error <- y - X %*% est_beta
+calcRMSE = function(mX, mY, est_beta, n){
+  error <- mY - mX %*% est_beta
   rsme <- sqrt((1/n) * (t(error)%*%error))
 }
 
