@@ -323,21 +323,21 @@ result$ConfusionTable
 1 - result$Accuracy
 
 
-
-
-
 result_svmmaj <- svmmaj(sample_x,sample_y, lambda = 100, scale = "none",hinge = "absolute")
 result_svmmaj$beta 
 result_svmmaj$loss
 result_svmmaj$q
 
 
-vLambda =2^seq(5, -5, length.out= 10)
+vLambda =2^seq(5, -5, length.out= 3)
 delta = seq(-2,3,1)
 k = 5
 
 result_svmmaj_cv <- svmmajcrossval(sample_x,sample_y, search.grid = list(lambda = vLambda) , k = k,scale = "none",hinge = "absolute")
+result_svmmaj_cv
 result_svm_mm_cv <- svm_mm_gridsearch(sample_x, sample_y, k = k, lambda = vLambda, hinge = "absolute", metric = "misclassification")
+result_svm_mm_cv
+
 
 folds <-createFolds(sample_y, k = k, list = TRUE, returnTrain = FALSE)
 
