@@ -7,7 +7,9 @@ if (!require("pacman")) install.packages("pacman")
 pacman::p_load(fastDummies,
                SVMMaj,
                dplyr,
-               caret)
+               caret, 
+               mclust, 
+               VeryLargeIntegers)
 
 
 # load bank data
@@ -51,7 +53,6 @@ numeric_vars <- as.matrix(data.frame(mX$age,
 # combine numeric and dummy variables
 mX_var <- as.matrix(cbind(1, scale(numeric_vars),dummy_vars))
 
-getHinge
 
 create_hinge_param <- function(mY, z, hinge = "absolute", epsilon = 1e-08, delta =1){
   
@@ -79,6 +80,7 @@ create_hinge_param <- function(mY, z, hinge = "absolute", epsilon = 1e-08, delta
   }
   
 }
+
 
 
 calc_loss <- function(z, mW, lambda, hinge = "absolute"){
@@ -145,7 +147,7 @@ svm_mm <- function(mY, mX, hinge = "absolute", lambda = 10, epsilon = 1e-08){
       
       # define A and b
       A = diag(as.vector(lhinge_param$a))
-      
+
       # get updated v
       vV_update = solve(t(mX) %*% A %*% mX + lambda * P, t(mX) %*% b)
       
@@ -179,7 +181,7 @@ svm_mm <- function(mY, mX, hinge = "absolute", lambda = 10, epsilon = 1e-08){
     
     
   }
-  
+
   mYhat = sign(mNew_q)
   
   resultOverview <- confusionMatrix(as.factor(mY), as.factor(mYhat))
@@ -203,6 +205,104 @@ svm_mm <- function(mY, mX, hinge = "absolute", lambda = 10, epsilon = 1e-08){
 }
 
 
+svm_mm_cv <- function(mX, mY, lambda, folds, hinge = "absolute", delta = NA, epsilon = 1e-08, metric = "ARI"){
+  
+  fTest_metric <- 0
+  
+  #Perform k fold cross validation
+  for(i in 1:length(folds)){
+    
+    #Split the data according to the folds
+    vTest_id = folds[[i]]
+    vTrain_id = -folds[[i]]
+
+    # define train and test set for y and x
+    mY_train <- mY[vTrain_id]
+    mX_train <- mX[vTrain_id,]
+    mY_test <- mY[vTest_id]
+    mX_test <- mX[vTest_id,]
+    
+
+    # get result from training set
+    lResult = svm_mm(mY = mY_train, mX = mX_train, hinge = hinge, lambda = lambda, epsilon = epsilon )
+    mV_train <- lResult$v
+    
+    # calculate the predicted y for this fold
+    mQ_test <- mX_test %*% mV_train
+    mY_hat <- sign(mQ_test)
+    
+    if(metric == "ARI"){
+      
+      # get the confusion matrix
+      fAdjRand <- adjustedRandIndex(mY_test, mY_hat)
+      fTest_metric_fold <- fAdjRand
+      
+    }else if (metric == "misclassification"){
+
+      # calculate misclassification
+      tab <- table(mY_test, mY_hat)
+      fMisclassification <- 1-sum(diag(tab))/sum(tab)
+      fTest_metric_fold <- fMisclassification
+      
+    }
+    
+    # add to calculate average
+    fTest_metric <- fTest_metric + fTest_metric_fold
+
+  }
+  
+  # calculate average
+  avg_test_metric = fTest_metric/length(folds)
+  
+  lResult_cv <- list(lambda = lambda,
+                     metric = avg_test_metric)
+  
+  return(lResult_cv)
+  
+  
+}
+
+svm_mm_gridsearch <- function(mX, mY, lambda, hinge = "absolute", k, delta = NA, epsilon = 1e-08, metric = "ARI"){
+  
+  
+  if (!is.na(delta)){
+    
+    mParamgrid = expand.grid(lambda, delta)
+  }else {
+    
+    mParamgrid = expand.grid(lambda)
+  }
+
+  # create k equally size folds
+  folds = createFolds(mY, k = k, list = TRUE, returnTrain = FALSE)
+  
+  mParamgrid$metric <- NA
+
+  # iterate over the grid
+  for(i in 1:nrow(mParamgrid)){
+    print(i)
+    
+    # select parameters from the grid
+    param <- mParamgrid[i,]
+    
+    print(param)
+    
+    # test these with k-fold
+    cv_result <- svm_mm_cv(mX, mY, lambda =param[1,1], folds = folds, hinge = hinge, epsilon = epsilon, metric = metric)
+    
+    print(cv_result$metric)
+    
+    #save the result
+    mParamgrid$metric[i] <- cv_result$metric
+  }
+  
+  return(mParamgrid)
+}
+  
+  
+
+
+
 
 
 # ensure that we can reproduce the code
@@ -216,21 +316,40 @@ sample_y = mY_num[sample_id]
 
 # compare our algorithm with SVM Maj - we get the same predictions (see confusion matrix), and exactly the same loss
 # but still different beta's? most likely something to do with the transformation of the data...
-result = svm_mm(sample_y, sample_x, lambda = 100, hinge = "quadratic")
+result = svm_mm(sample_y, sample_x, lambda = 100, hinge = "absolute")
 result$v
 result$loss
 result$ConfusionTable
-result$Accuracy
+1 - result$Accuracy
 
 
-result_svmmaj <- svmmaj(sample_x,sample_y, lambda = 100, scale = "none",hinge = "quadratic")
+
+
+
+result_svmmaj <- svmmaj(sample_x,sample_y, lambda = 100, scale = "none",hinge = "absolute")
 result_svmmaj$beta 
 result_svmmaj$loss
 result_svmmaj$q
 
 
+vLambda =2^seq(5, -5, length.out= 10)
+delta = seq(-2,3,1)
+k = 5
+
+result_svmmaj_cv <- svmmajcrossval(sample_x,sample_y, search.grid = list(lambda = vLambda) , k = k,scale = "none",hinge = "absolute")
+result_svm_mm_cv <- svm_mm_gridsearch(sample_x, sample_y, k = k, lambda = vLambda, hinge = "absolute", metric = "misclassification")
+
+folds <-createFolds(sample_y, k = k, list = TRUE, returnTrain = FALSE)
+
+#Split the data according to the folds
+vTest_id = folds[[1]]
+vTrain_id = -folds[[1]]
+
+# define train and test set for y and x
+mY_train <- sample_y[vTrain_id]
+mX_train <- sample_x[vTrain_id,]
+mY_test <- sample_y[vTest_id]
+mX_test <- sample_x[vTest_id,]
 
 
-
-create_hinge_param()
-
+svm_mm(mY = mY_train, mX = mX_train, lambda = 100, hinge = "absolute")
