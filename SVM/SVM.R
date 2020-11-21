@@ -12,47 +12,8 @@ pacman::p_load(fastDummies,
                VeryLargeIntegers,
                matlib)
 
-# load bank data
-load("bank.RData")
-
-# get dependent variable and transform
-mY <- bank[,ncol(bank)]
-mY_num <- as.matrix(ifelse(mY == "yes", 1, -1))
-
-# get all possible independent variables
-mX = bank[,-ncol(bank)]
-
-# create dummy variables 
-df_toDummy = as.matrix(data.frame(
-                        mX$job,
-                        mX$marital, 
-                        mX$education, 
-                        mX$default, 
-                        mX$housing, 
-                        mX$loan, 
-                        mX$contact,
-                        mX$month, 
-                        mX$day_of_week,
-                        mX$poutcome))
-
-dummy_vars <-  dummy_columns(df_toDummy)
-dummy_vars <- dummy_vars[,(1+ncol(df_toDummy)):ncol(dummy_vars)]
-
-# select numeric variables, scale these. Leave out duration for realistic predictions
-numeric_vars <- as.matrix(data.frame(
-                           mX$age, 
-                           mX$campaign, 
-                           mX$cons.price.idx, 
-                           mX$cons.conf.idx, 
-                           mX$nr.employed))
-
-
-
-# combine numeric and dummy variables
-mX_var <- as.matrix(cbind(1, scale(numeric_vars),dummy_vars))
-
 # create parameters for hinge errors
-create_hinge_param <- function(mY, z, hinge = "absolute", epsilon = 1e-08, k_huber =1, mQ = NA){
+create_hinge_param <- function(mY, mQ, z, hinge = "absolute", epsilon = 1e-08, k_huber = 1){
   
   # when the hinge is absolute
   if(hinge == "absolute"){
@@ -61,6 +22,7 @@ create_hinge_param <- function(mY, z, hinge = "absolute", epsilon = 1e-08, k_hub
     m <- abs(1 - z)
     m <- m * (m > epsilon) + epsilon * (m <= epsilon)
   
+    # calculate a and b using m
     a <- .25 * m^-1
     b <- mY * (a + 0.25)
     
@@ -70,7 +32,6 @@ create_hinge_param <- function(mY, z, hinge = "absolute", epsilon = 1e-08, k_hub
   }else if (hinge == "quadratic"){
     
     # for quadratic hinge, no need to calculate a (always identity)
-    
     m <- z* (z > 1) + (1 >= z)
     b <- m * mY
     
@@ -78,40 +39,22 @@ create_hinge_param <- function(mY, z, hinge = "absolute", epsilon = 1e-08, k_hub
     
   }else if(hinge == "huber"){
     
-
-    
     a <- 0.5 * (k_huber + 1)^-1
     
-    b <- (mY == -1) * ((mQ <= -1) * (a * mQ) + (mQ >= k_huber) * (a * mQ - 0.5) + (mQ > -1 & mQ < k_huber) * (-a)) +
-      (mY == 1) * ((mQ <= -k_huber) * (0.5 + a * mQ) + (mQ >= 1) * (a * mQ) + (mQ > -k_huber & mQ < 1) * (a))
+    b <- (mY == -1) * ((mQ <= -1) * (a * mQ) + 
+            (mQ >= k_huber) * (a * mQ - 0.5) + 
+            (mQ > -1 & mQ < k_huber) * (-a)) +
+         (mY == 1) * ((mQ <= -k_huber) * (0.5 + a * mQ) + 
+            (mQ >= 1) * (a * mQ) + 
+            (mQ > -k_huber & mQ < 1) * (a))
     
-    c <- (mY == -1) * ((mQ <= -1) * (a * mQ^2) + (mQ >= k_huber) * (1 - (k_huber + 1)/2 + a * mQ^2) + (mQ > -1 & mQ < k_huber) * (a)) +
-      (mY == 1) * ((mQ <= -k_huber) * (1 - (k_huber + 1)/2  + a * mQ^2) + (mQ >= 1) * (a * mQ^2) + (mQ > -k_huber & mQ < 1) * (a))
+    c <- (mY == -1) * ((mQ <= -1) * (a * mQ^2) + 
+            (mQ >= k_huber) * (1 - (k_huber + 1)/2 + a * mQ^2) + 
+            (mQ > -1 & mQ < k_huber) * (a)) +
+         (mY == 1) * ((mQ <= -k_huber) * (1 - (k_huber + 1)/2  + a * mQ^2) + 
+            (mQ >= 1) * (a * mQ^2) + 
+            (mQ > -k_huber & mQ < 1) * (a))
     
-    
-    
-    
-    
-
-    #t_v_mY = (mY == -1) * (mQ <= -1)
-    #print(t_v_mY)
-
-    # b <- (mY == -1) * ((mQ<= -1) * (a * mQ) +
-    #   (mQ >= k_huber) * (a * mQ - .5) +
-    #   (mQ > -1 & mQ < k_huber) * (-a))+
-    #   (mY == 1) * ((mQ <= -k_huber) * (.5 + a * mQ)+
-    #   (mQ >= 1) * (a * mQ) +
-    #   (mQ > -k_huber & mQ < 1) * (a))
-    # 
-    # #maQ <- a * mQ
-    # #maQ2 <- maQ^2
-    # 
-    # c <- (mY == -1) * ((mQ <= -1) * (a * mQ^2) +
-    #   (mQ >= k_huber) * (1 - (k_huber + 1)/2 + a * mQ^2) +
-    #   (mQ > -1 & mQ < k_huber) * (a)) +
-    #   (mY == 1) * ((mQ <= -k_huber) * (1 - (k_huber + 1)/2  + a * mQ^2) +
-    #   (mQ >= 1) * (a * mQ^2) + (mQ > -k_huber & mQ < 1) * (a))
-      
     return(list(a = a, 
                 b = b, 
                 c = c))
@@ -123,13 +66,13 @@ create_hinge_param <- function(mY, z, hinge = "absolute", epsilon = 1e-08, k_hub
 
 
 
-calc_loss <- function(z, mW, lambda, hinge = "absolute", lHinge_param = NA, mQ = NA, mY = NA, k_huber){
+calc_loss <- function(mW, lambda, z, mY = NA, hinge = "absolute", mQ = NA, k_huber = NA ){
   
   mWtW = t(mW) %*% mW
   penalty = lambda * mWtW
   
   if(hinge == "absolute"){
-    
+
     vloss <- (1 > z) * (1 - z)
     
   }else if(hinge == "quadratic"){
@@ -137,11 +80,6 @@ calc_loss <- function(z, mW, lambda, hinge = "absolute", lHinge_param = NA, mQ =
     vloss <- (1 > z) * (1 - z)^2
     
   }else if(hinge == "huber"){
-    
-    if(is.na(lHinge_param) || is.na(mQ)){
-      stop("No hinge paramers or prediction (Q) passed")
-      
-    }
     
     vloss <- (mY == 1) * (mQ <= -k_huber) * (1 - mQ -(k_huber + 1)/2) +
       (mY == 1) * (mQ > -k_huber) * (0.5 * (k_huber+1)^-1 * pmax(0,1 - mQ) ^2) +
@@ -155,9 +93,7 @@ calc_loss <- function(z, mW, lambda, hinge = "absolute", lHinge_param = NA, mQ =
   return(sum(vloss) + penalty)
 }
 
-
-
-svm_mm <- function(mY, mX, hinge = "absolute", lambda = 10, epsilon = 1e-08, k_huber = 1){
+svm_mm <- function(mY, mX, hinge = "absolute", lambda = 10, epsilon = 1e-08, k_huber = 3){
   
   # set initial weights and constant. From these, create initial v = c + w
   vW = runif(ncol(mX)-1, -1, 1)
@@ -185,20 +121,19 @@ svm_mm <- function(mY, mX, hinge = "absolute", lambda = 10, epsilon = 1e-08, k_h
     
     # get current prediction (q) and z
     mCurrent_q = mX %*% vV_current
-    fCurrent_z = mY * mCurrent_q
-    
-    # get parameters given the y and z
+    mCurrent_z = mCurrent_q * mY
+
+    # get parameters given the z (absolute and quadratic) or q and y (huber)
     lHinge_param_current = create_hinge_param(mY = mY, 
-                                              z= fCurrent_z, 
+                                              mQ = mCurrent_q,
+                                              z = mCurrent_z,
                                               hinge = hinge, 
                                               epsilon = epsilon, 
-                                              k_huber = k_huber,
-                                              mQ = mCurrent_q)
-    lHinge_param_update = NA
-
-    
+                                              k_huber = k_huber)
+    # all hinges need a b, so can define here
     b = lHinge_param_current$b
 
+    # quick update if quadratic
     if(hinge == "quadratic"){
       
       vV_update = Z %*% b
@@ -219,26 +154,29 @@ svm_mm <- function(mY, mX, hinge = "absolute", lambda = 10, epsilon = 1e-08, k_h
 
     # get new prediction (q) and z
     mNew_q = mX %*% vV_update
-    fNew_z = mY * mNew_q
+    mNew_z = mNew_q * mY
     
-    if(hinge == "huber"){
-      
-      lHinge_param_update = create_hinge_param(mY = mY, z= fNew_z, hinge = hinge, epsilon = epsilon, mQ = mNew_q, k_huber = k_huber)
-    }
-    
+
     # calculate new, and previous loss
-    fCurrent_loss = calc_loss(z = fCurrent_z, mW = mW_current, lambda = lambda, hinge = hinge, lHinge_param = lHinge_param_current, mQ = mCurrent_q, k_huber = k_huber, mY = mY)
-    fNew_loss = calc_loss(z = fNew_z,mW = mW_update, lambda = lambda, hinge = hinge, lHinge_param = lHinge_param_update, mQ = mNew_q,k_huber = k_huber, mY = mY)
+    fCurrent_loss = calc_loss(mW = mW_current,
+                              mQ = mCurrent_q,
+                              z = mCurrent_z,
+                              mY = mY,
+                              lambda = lambda, 
+                              hinge = hinge, 
+                              k_huber = k_huber)
     
-    print("Old loss")
-    print(fCurrent_loss)
-    
-    print("New loss")
-    print(fNew_loss)
+
+    fNew_loss = calc_loss(mW = mW_update, 
+                          mQ = mNew_q,
+                          z = mNew_z,
+                          mY = mY,
+                          lambda = lambda, 
+                          hinge = hinge, 
+                          k_huber = k_huber)
     
     # calculate improvement
     stepscore <- (fCurrent_loss - fNew_loss)/fCurrent_loss
-    
 
     # check: if all predicted correctly, turns to NaN since divided by zero
     if (is.na(stepscore)){
@@ -251,21 +189,29 @@ svm_mm <- function(mY, mX, hinge = "absolute", lambda = 10, epsilon = 1e-08, k_h
     
   }
 
-  mYhat = sign(mNew_q)
+  # get predicted category
+  mY_hat = sign(mNew_q)
   
-  resultOverview <- confusionMatrix(as.factor(mY), as.factor(mYhat))
-  mConfusionTable <- resultOverview$table
-  fAccuracy <- resultOverview$overall[1]
-
   
+  
+  # gather results 
+  mConfusionTable <- table(mY, mY_hat)
+  
+  # create confusion matrix and calculate accuracy
+  fAccuracy <- sum(mY_hat == mY)/length(mY)
+  
+  fARI <- adjustedRandIndex(mY, mY_hat)
+  
+  # return results object
   lResults = list(v = vV_update,
                   mY = mY,
                   mX = mX, 
                   loss = fCurrent_loss,
                   q = mNew_q,
-                  yhat = mYhat,
+                  yhat = mY_hat,
                   Accuracy = fAccuracy,
-                  ConfusionTable = mConfusionTable)
+                  ConfusionTable = mConfusionTable,
+                  ARI = fARI)
   
   return(lResults)
 
@@ -291,9 +237,8 @@ svm_mm_cv <- function(mX, mY, lambda, folds, hinge = "absolute", k_huber = NA, e
     mY_test <- mY[vTest_id]
     mX_test <- mX[vTest_id,]
     
-
     # get result from training set
-    lResult = svm_mm(mY = mY_train, mX = mX_train, hinge = hinge, lambda = lambda, epsilon = epsilon )
+    lResult = svm_mm(mY = mY_train, mX = mX_train, hinge = hinge, lambda = lambda, epsilon = epsilon, k_huber = k_huber )
     mV_train <- lResult$v
     
     # calculate the predicted y for this fold
@@ -314,7 +259,7 @@ svm_mm_cv <- function(mX, mY, lambda, folds, hinge = "absolute", k_huber = NA, e
       fTest_metric_fold <- fMisclassification
       
     }
-    
+
     # add to calculate average
     fTest_metric <- fTest_metric + fTest_metric_fold
 
@@ -334,7 +279,7 @@ svm_mm_cv <- function(mX, mY, lambda, folds, hinge = "absolute", k_huber = NA, e
 svm_mm_gridsearch <- function(mX, mY, lambda, hinge = "absolute", k, k_huber = NA, epsilon = 1e-08, metric = "ARI"){
   
   
-  if (!is.na(k_huber)){
+  if (hinge == "huber"){
     
     mParamgrid = expand.grid(lambda, k_huber)
   }else {
@@ -353,8 +298,12 @@ svm_mm_gridsearch <- function(mX, mY, lambda, hinge = "absolute", k, k_huber = N
     # select parameters from the grid
     param <- mParamgrid[i,]
     
+    print(param[1,c(1,2)])
+    
     # test these with k-fold
-    cv_result <- svm_mm_cv(mX, mY, lambda =param[1,1], folds = folds, hinge = hinge, epsilon = epsilon, metric = metric)
+    cv_result <- svm_mm_cv(mX = mX,mY= mY, lambda =param[1,1], k_huber = param[1,2],folds = folds, hinge = hinge, epsilon = epsilon, metric = metric)
+
+    print(cv_result$metric)
     
     #save the result
     mParamgrid$metric[i] <- cv_result$metric
@@ -367,10 +316,50 @@ svm_mm_gridsearch <- function(mX, mY, lambda, hinge = "absolute", k, k_huber = N
 
 
 
-
+#### section 1: data pre-processing
 
 # ensure that we can reproduce the code
 set.seed(123)
+
+# load bank data
+#bank <- read.csv("bank-additional.csv")
+load("bank.Rdata")
+
+# get dependent variable and transform to 1, -1
+mY <- bank[,ncol(bank)]
+mY_num <- as.matrix(ifelse(mY == "yes", 1, -1))
+
+# get all possible independent variables
+mX = bank[,-ncol(bank)]
+
+# create dummy variables 
+df_toDummy = as.matrix(data.frame(
+  mX$job,
+  mX$marital, 
+  mX$education, 
+  mX$default, 
+  mX$housing, 
+  mX$loan, 
+  mX$contact,
+  mX$month, 
+  mX$day_of_week,
+  mX$poutcome))
+
+dummy_vars <-  dummy_columns(df_toDummy)
+dummy_vars <- dummy_vars[,(1+ncol(df_toDummy)):ncol(dummy_vars)]
+
+# select numeric variables, scale these. Leave out duration for realistic predictions
+numeric_vars <- as.matrix(data.frame(
+  mX$age, 
+  mX$campaign, 
+  mX$cons.price.idx, 
+  mX$cons.conf.idx, 
+  mX$nr.employed))
+
+# combine numeric and dummy variables
+mX_var <- as.matrix(cbind(1, scale(numeric_vars),dummy_vars))
+
+
 
 # pick a random sample of 1000
 sample_id <- sample(4000, 1000)
@@ -378,36 +367,90 @@ sample_x = mX_var[sample_id,]
 sample_y = mY_num[sample_id]
 
 
-# compare our algorithm with SVM Maj - we get the same predictions (see confusion matrix), and exactly the same loss
+### section 2: compare a single svm_mm with svm_maj
+
+# We get the same predictions (see confusion matrix), and exactly the same loss, for each type of error
 # but still different beta's? most likely something to do with the transformation of the data...
-result = svm_mm(sample_y, sample_x, lambda = 10, hinge = "huber", k_huber = 3)
+
+# our implementation
+result = svm_mm(sample_y, sample_x, lambda = 0.1, hinge = "huber", k_huber = 2)
 result$v
 result$loss
 result$ConfusionTable
-1 - result$Accuracy
+result$Accuracy
+result$ARI
 
 
-help(svmmaj)
-result_svmmaj <- svmmaj(sample_x,sample_y, lambda = 10, scale = "none",hinge = "huber")
+
+#svmmaj implementation
+result_svmmaj <- svmmaj(sample_x,sample_y, lambda = 10, scale = "none",hinge = "quadratic")
 result_svmmaj$beta 
 result_svmmaj$loss
 result_svmmaj$q
 
-vLambda =10^seq(10, -5, length.out= 10)
-k_huber = seq(-1,1,length.out=5)
-k = 5
+
+### section 3: compare cross validation results, and create cv plots
+
+# check out the following parameters
+vLambda =10^seq(5, -1, length.out= 5) # 10
+#vLambda = 1-01
+vk_huber = seq(2,4, by = 1)
+
+# k-fold of 20 to have enough info, but not make it computationally too intensive
+k = 20
 
 # cv comparison
-result_svmmaj_cv <- svmmajcrossval(sample_x,sample_y, search.grid = list(lambda = vLambda) , k = k,scale = "none",hinge = "quadratic")
-result_svm_mm_cv <- svm_mm_gridsearch(sample_x, sample_y, k = k, lambda = vLambda, hinge = "quadratic", metric = "ARI")
+result_svm_mm_cv <- svm_mm_gridsearch(sample_x, sample_y, k = k, lambda = vLambda, k_huber = vk_huber, hinge = "huber", metric = "misclassification")
+result_svmmaj_cv <- svmmajcrossval(sample_x,sample_y, search.grid = list(lambda = vLambda) , k = k,scale = "none",hinge = "huber")
 
 
-# data cleaning
-colnames(result_svm_mm_cv) <- c("lambda", "ARI")
+# data cleaning of our cv results
+colnames(result_svm_mm_cv) <- c("lambda", "misclassification")
 
-ggplot(data = result_svm_mm_cv, aes(x = lambda, y = ARI))+
+# finds same lambda for quadratic
+ggplot(data = result_svm_mm_cv, aes(x = log(lambda), y = misclassification, col = "red"))+
   geom_line()+
+  geom_line(data = result_svmmaj_cv$param.grid, aes(y = loss, col = "blue")) +
   theme_minimal()
+
+
+## now create plots per type of error for optimal lambda
+result_cv_quadratic <- svm_mm_gridsearch(sample_x, sample_y, k = k, lambda = vLambda, hinge = "quadratic", metric = "ARI")
+result_cv_huber <- svm_mm_gridsearch(sample_x, sample_y, k = k, lambda = vLambda, k_huber = vk_huber, hinge = "huber", metric = "ARI")
+result_cv_absolute <- svm_mm_gridsearch(sample_x, sample_y, k = k, lambda = vLambda, hinge = "absolute", metric = "ARI")
+
+# change column names
+colnames(result_cv_quadratic) <- c("lambda", "ARI")
+colnames(result_cv_absolute) <- c("lambda", "ARI")
+colnames(result_cv_huber) <- c("lambda", "k_huber", "ARI")
+
+# finds same lambda for quadratic
+ggplot(data = result_cv_quadratic, aes(x = log(lambda), y = ARI, col = "red"))+
+  geom_line()
+
+
+
+
+### section 4: test the optimal parameters from cv on a train and test set
+
+## 70% of the sample size
+fTrain_size <- floor(0.7 * nrow(mX_var))
+
+# get train indexes for the dataset
+vTrain_id <- sample(nrow(mX_var), size = fTrain_size)
+
+# train and test split
+mX_train <- mX_var[vTrain_ind, ]
+mX_test <- mX_var[-vTrain_ind, ]
+
+mY_train <- mY_num[vTrain_ind]
+mY_test <- mY_num[-vTrain_ind]
+
+result_absolute <- svm_mm(sample_y, sample_x, lambda = 1000, hinge = "quadratic", k_huber = 3)
+result_quadratic <- svm_mm
+
+
+### section 5: test the different kernels 
 
 
 result_svmmaj_cv_linKernel <- svmmajcrossval(sample_x, sample_y, 

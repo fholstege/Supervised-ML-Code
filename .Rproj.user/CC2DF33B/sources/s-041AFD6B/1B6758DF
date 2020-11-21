@@ -1,0 +1,32 @@
+{
+    "id": "1B6758DF",
+    "path": null,
+    "project_path": null,
+    "type": "r_dataframe",
+    "hash": "0",
+    "contents": "",
+    "dirty": false,
+    "created": 1605960591939.0,
+    "source_on_save": false,
+    "relative_order": 3,
+    "properties": {
+        "expression": "result_cv_quadratic",
+        "caption": "result_cv_quadratic",
+        "totalObservations": 10,
+        "displayedObservations": 10,
+        "variables": 2,
+        "cacheKey": "CA8724A5",
+        "object": "result_cv_quadratic",
+        "environment": "",
+        "contentUrl": "grid_resource/gridviewer.html?env=&obj=result_cv_quadratic&cache_key=CA8724A5&max_cols=50",
+        "preview": 0
+    },
+    "folds": "",
+    "lastKnownWriteTime": 8314038710771478380,
+    "encoding": "",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1605960591939,
+    "read_only": false,
+    "read_only_alternatives": []
+}
