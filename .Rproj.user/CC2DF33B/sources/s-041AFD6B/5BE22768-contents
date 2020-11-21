@@ -1,0 +1,200 @@
+#week 3 exercise
+if (!require("SVMMaj")) install.packages("SVMMaj")
+library(SVMMaj)
+
+
+
+# define function that gives majorising parameters and associated loss
+hinge <- function(q, y, type = 'quadratic', k = 3, eps = 1e-6) {
+  
+  if (type == 'absolute'){
+    # adjust q if too low
+    q_adj = sign(q) * pmax(abs(q),eps)
+    
+    # compute parameters of majorising function
+    a <- (y == 1) * 0.25 * abs(1 - q_adj)^-1 + (y == -1) * 0.25 * abs(1 + q_adj)^-1
+    
+    b <- y * (0.25 + a)
+    
+    c <- a + 0.5 + (y == 1) * 0.25 * abs(1 - q_adj) + (y == -1) * 0.25 * abs(1 + q_adj)
+    
+    # compute part of loss that depends on type of hinge loss
+    loss <- (y == 1) * pmax(0, 1 - q) + (y == -1) * pmax(0, 1 + q)
+  }
+  
+  if (type == 'quadratic'){
+    # compute parameters of majorising function
+    a <- 1
+    
+    b <- (y == -1 & q > -1) * -1 + (y == -1 & q <= -1) * q + (y == 1 & q > 1) * q + (y == 1 & q <= 1) 
+    
+    c <- (y == -1 & q > -1) + (y == -1 & q <= -1) * (1 - 2*(q+1) + (q+1)^2) + 
+      (y == 1 & q > 1) * (1 - 2*(1-q) + (q-1)^2) + (y == 1 & q <= 1)
+    
+    # compute part of loss that depends on type of hinge loss
+    loss <- (y == 1) * pmax(0, 1 - q)^2 + (y == -1) * pmax(0, 1 + q)^2
+  }
+  
+  if (type == 'huber') {
+    # compute parameters of majorising function
+    a <- 0.5 * (k + 1)^-1 
+    
+    b <- (y == -1) * ((q <= -1) * (a * q) + (q >= k) * (a * q - 0.5) + (q > -1 & q < k) * (-a)) +
+      (y == 1) * ((q <= -k) * (0.5 + a * q) + (q >= 1) * (a * q) + (q > -k & q < 1) * (a))
+    
+    c <- (y == -1) * ((q <= -1) * (a * q^2) + (q >= k) * (1 - (k + 1)/2 + a * q^2) + (q > -1 & q < k) * (a)) +
+      (y == 1) * ((q <= -k) * (1 - (k + 1)/2  + a * q^2) + (q >= 1) * (a * q^2) + (q > -k & q < 1) * (a))
+    
+    # compute part of loss that depends on type of hinge loss
+    loss <- (y == 1) * (q <= -k) * (1 - q - (k + 1)/2)  + 
+      (y == 1) * (q > -k) * (0.5 * (k + 1)^-1 * pmax(0, 1 - q)^2) +
+      (y == -1) * (q <= k) * (0.5 * (k + 1)^-1 * pmax(0, 1 + q)^2)  + 
+      (y == -1) * (q > k) * (q + 1 - (k + 1)/2)
+  }
+  return(list(a = a, b = b, c = c, loss = sum(loss)))
+}
+
+# main SVM function that estimates v
+my.SVMMaj <- function(mX, y, c = NULL, w = NULL, lambda = 0.5, hinge_type = 'quadratic', k = 3, eps = 1e-6, tol = 1e-4){
+  
+  # check for valid inputs
+  if (!(hinge_type) %in% c('absolute', 'quadratic', 'huber')) {
+    stop('Hinge error must be one of absolute, quadratic, huber')
+  }
+  
+  if(eps < 0 | tol < 0) {
+    stop('eps and tol must be small positive numbers')
+  }
+  
+  # determine number of parameters
+  p <- ncol(mX)
+  
+  # initialise iterator
+  i <- 0
+  
+  # initialise parameters c and w
+  if(is.null(c)){
+    c <- runif(1, -3, 3)
+  }
+  
+  if(is.null(w)){
+    w <- runif(p-1, -3, 3)
+  }
+  
+  # create parameter vector
+  v <- c(c, w)
+  v <- rep(0, p)
+  
+  # compute initial q
+  q <-  mX %*% v
+  
+  # initialise P matrix to avoid penalising intercept
+  mP <- cbind(rep(0, p), rbind(rep(0, p-1), diag(p-1)))
+  
+  # compute initial hinge parameters and associated loss
+  hinge_pars <- hinge(q, y, type = hinge_type, k = k)
+  
+  # for huber loss compute constant part of update step
+  if (hinge_type == 'huber'){
+    mA <- diag(rep(hinge_pars$a,nrow(mX)))
+    mS <- solve((t(mX) %*% mA %*% mX + lambda * mP)) %*% t(mX)
+  }
+  
+  # for quadratic loss compute constant part of update step
+  if (hinge_type == 'quadratic'){
+    mA <- diag(rep(hinge_pars$a,nrow(mX)))
+    mZ <- solve((t(mX) %*% mX + lambda * mP)) %*% t(mX)
+  }
+  
+  # give initial loss
+  loss_new <-  hinge_pars$loss + lambda * crossprod(v[2:p])
+  
+  # hand over parameters value to run while loop
+  v_new <- v
+  
+  cat('Initialisation finished. Loss:', loss_new, '\n')
+  
+  # start while loop here
+  while (TRUE) {
+    # update iterator and copy previous values
+    i <- i + 1
+    loss_old <- loss_new
+    v <- v_new
+    
+    # compute q
+    q <-  mX %*% v
+    
+    # retrieve hinge loss part and parameters
+    hinge_pars <- hinge(q, y, type = hinge_type, k = k)
+    
+    # construct b vector
+    b <- hinge_pars$b
+    
+    # do update step
+    if (hinge_type == 'quadratic') {
+      # update step
+      v_new <- mZ %*% b
+      
+      # acceleration (step-doubling) for quadratic hinge
+      # i determines after how many steps acceleration kicks in if available
+      if (i > 25) {
+        v_new <- v - 2 * (v_new - v)
+      }
+      
+    } else if (hinge_type == 'huber') {
+      # update step
+      v_new <- mS %*% b
+      
+    } else {
+      # absolute hinge loss
+      # construct A matrix
+      mA <-  diag(as.vector(hinge_pars$a))
+      
+      # update step
+      v_new <- solve((t(mX) %*% mA %*% mX + lambda * mP), t(mX) %*% b)
+    }
+    
+    # calculate new loss 
+    loss_new <- hinge(mX %*% v_new, y, type = hinge_type, k = k)$loss + lambda * crossprod(v_new[2:p])
+    
+    cat('Update step', i, 'Loss:', loss_new, 'Change in Loss:', loss_old - loss_new, '\n')
+    
+    if (((loss_old - loss_new)/loss_old) < tol) {
+      cat('Convergence criterion reached. Loss:', loss_new, '\n')
+      break
+    }
+  }
+  return(list(v = v_new, loss = loss_new))
+}
+
+################################################################################
+################################ main ##########################################
+set.seed(12345)
+
+#data <- read.table("~\\bankdata.csv", header = TRUE, sep =";")
+data <- bank
+
+factors <- c(2:10,15,21)
+numerics <- c(1,11:14)
+data[, factors] <- lapply(data[,factors], as.factor)
+data[,numerics] <- lapply(data[,numerics], as.numeric)
+
+
+# define outcome vector
+y <- data['y']
+
+# define outcome to be +1 and -1
+y <- ifelse(y == "yes", 1, -1)
+
+#  create design matrix
+mX <- model.matrix(y ~ ., data = data)
+
+
+
+# scale inputs
+mX[,2:ncol(mX)] <- scale(mX[,2:ncol(mX)])
+result1 <- my.SVMMaj(mX, y, c = NULL, w = NULL, lambda = 0.5, hinge_type = 'huber', k = 3, eps = 1e-6, tol = 1e-8)
+result2 <- svmmaj(X = mX, y = y, lambda = 0.5, scale = "zscore", hinge = "huber")
+result2$loss
+
+result3 <-  my.SVMMaj(mX, y, c = NULL, w = NULL, lambda = 0.5, hinge_type = 'huber', k = 1e-08, eps = 1e-6, tol = 1e-8)

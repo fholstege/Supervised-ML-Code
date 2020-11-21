@@ -4,7 +4,8 @@
 if (!require("pacman")) install.packages("pacman")
 pacman::p_load(stargazer,
                lmtest,
-               matlib)
+               matlib,
+               gmm)
 
 # load data, get summary statistics
 df <- read.csv("Data/DataAS1.csv")
@@ -101,29 +102,69 @@ summary(model_2_Log)
 mY <- as.matrix(df$birthweight)
 mX_model1 <- as.matrix(data.frame(1, df$age, df$unmarried, df$educ))
 
-# define log-likelihood function
-LL <- function(mB, mY, mX, sigma2){
+# # define log-likelihood function
+# LL <- function(mB, mY, mX, sigma2){
+#   n      <- nrow(mX)
+#   e <- mY - (mX %*% mB)
+#   
+#   logL <- .5*n*log(2*pi)-.5*n*log(sigma2)-((t(e)%*%e)/(2*sigma2))
+#   return(-logL)
+# 
+# }
+
+
+LL_alt <- function(mBeta, mY, mX, sigma2){
+  
   n      <- nrow(mX)
-  e <- mY - (mX %*% mB)
+  e <- mY - (mX %*% mBeta)
   
   logL <- .5*n*log(2*pi)-.5*n*log(sigma2)-((t(e)%*%e)/(2*sigma2))
   return(-logL)
-
+  
 }
+
+
+
 
 # set initial beta's
 Beta <- c(1,1,1,1)
 mBeta <- as.matrix(Beta)
 
 # optimize log likelihood function
-ML_1 <- optim(mBeta,LL,method="BFGS",hessian=T,mY=mY,mX=mX_model1, sigma2 = 1)
+ML_1 <- optim(mBeta,LL_alt,method="BFGS",hessian=T,mY=mY,mX=mX_model1, sigma2=1)
 # has the same beta's as the lm() 
 ML_1$par
 model_1$coefficients
 
 
+stargazer(ML_1$par)
 
 # Question 6: GMM estimate
-est.Beta.GMM <- inv(t(mX_model1) %*%mX_model1) %*% t(mX_model1) %*% mY
-est.Beta.GMM
+
+# using the equation she gave in the lecture
+GMM_1 <- inv(t(mX_model1) %*% mX_model1) %*% t(mX_model1) %*% mY
+GMM_1
+stargazer(GMM_1)
+
+
+### old code - attempt to use gmm function
+mXY <- cbind(mX_model1, mY)
+colnames(mXY) <- c("constant", "age", "unmarried", "education", "birthweight")
+mXY
+
+
+sample_moments <- function(a, X){
+  
+  term = (X[,5] - a[1]*X[,1] - a[2]*X[,2] - a[3]*X[,3] - a[4]*X[,4])
+  m1 = X[,1] * term
+  m2 = X[,2] * term
+  m3 = X[,3] * term
+  m4 = X[,4] * term
+  
+  f= cbind(m1,m2,m3,m4)
+  return(f)
+}
+
+gmm_1 <- gmm(sample_moments, as.matrix(mXY), c(0,0,0,0), type = 'iterative', wmatrix = "optimal")
+
 
