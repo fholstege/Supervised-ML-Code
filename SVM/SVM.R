@@ -10,7 +10,9 @@ pacman::p_load(fastDummies,
                caret, 
                mclust, 
                VeryLargeIntegers,
-               matlib)
+               matlib,
+               latex2exp,
+               reshape2)
 
 # create parameters for hinge errors
 create_hinge_param <- function(mY, mQ, z, hinge = "absolute", epsilon = 1e-08, k_huber = 1){
@@ -315,18 +317,17 @@ svm_mm_gridsearch <- function(mX, mY, lambda, hinge = "absolute", k, k_huber = N
   
 
 
-
 #### section 1: data pre-processing
 
 # ensure that we can reproduce the code
 set.seed(123)
 
 # load bank data
-#bank <- read.csv("bank-additional.csv")
-load("bank.Rdata")
+bank <- read.csv("bank-additional.csv", sep = ";")
+#load("bank.Rdata")
 
 # get dependent variable and transform to 1, -1
-mY <- bank[,ncol(bank)]
+mY <- bank$y
 mY_num <- as.matrix(ifelse(mY == "yes", 1, -1))
 
 # get all possible independent variables
@@ -343,7 +344,8 @@ df_toDummy = as.matrix(data.frame(
   mX$contact,
   mX$month, 
   mX$day_of_week,
-  mX$poutcome))
+  mX$poutcome,
+  mX$pdays))
 
 dummy_vars <-  dummy_columns(df_toDummy)
 dummy_vars <- dummy_vars[,(1+ncol(df_toDummy)):ncol(dummy_vars)]
@@ -354,12 +356,12 @@ numeric_vars <- as.matrix(data.frame(
   mX$campaign, 
   mX$cons.price.idx, 
   mX$cons.conf.idx, 
-  mX$nr.employed))
+  mX$nr.employed, 
+  mX$emp.var.rate,
+  mX$euribor3m))
 
 # combine numeric and dummy variables
 mX_var <- as.matrix(cbind(1, scale(numeric_vars),dummy_vars))
-
-
 
 # pick a random sample of 1000
 sample_id <- sample(4000, 1000)
@@ -380,8 +382,6 @@ result$ConfusionTable
 result$Accuracy
 result$ARI
 
-
-
 #svmmaj implementation
 result_svmmaj <- svmmaj(sample_x,sample_y, lambda = 10, scale = "none",hinge = "quadratic")
 result_svmmaj$beta 
@@ -389,12 +389,13 @@ result_svmmaj$loss
 result_svmmaj$q
 
 
+
+
 ### section 3: compare cross validation results, and create cv plots
 
 # check out the following parameters
-vLambda =10^seq(5, -1, length.out= 5) # 10
-#vLambda = 1-01
-vk_huber = seq(2,4, by = 1)
+vLambda =10^seq(5, -3, length.out= 10) # 10
+vk_huber = seq(0,3, by = 1)
 
 # k-fold of 20 to have enough info, but not make it computationally too intensive
 k = 20
@@ -402,7 +403,6 @@ k = 20
 # cv comparison
 result_svm_mm_cv <- svm_mm_gridsearch(sample_x, sample_y, k = k, lambda = vLambda, k_huber = vk_huber, hinge = "huber", metric = "misclassification")
 result_svmmaj_cv <- svmmajcrossval(sample_x,sample_y, search.grid = list(lambda = vLambda) , k = k,scale = "none",hinge = "huber")
-
 
 # data cleaning of our cv results
 colnames(result_svm_mm_cv) <- c("lambda", "misclassification")
@@ -424,11 +424,28 @@ colnames(result_cv_quadratic) <- c("lambda", "ARI")
 colnames(result_cv_absolute) <- c("lambda", "ARI")
 colnames(result_cv_huber) <- c("lambda", "k_huber", "ARI")
 
+
+df_cv_compare <- data.frame(lambda = result_cv_absolute$lambda, abs_ARI = result_cv_absolute$ARI, quad_ARI = result_cv_quadratic$ARI)
+df_cv_compare <- melt(df_cv_compare, id.vars = "lambda")
+df_cv_compare
+
 # finds same lambda for quadratic
-ggplot(data = result_cv_quadratic, aes(x = log(lambda), y = ARI, col = "red"))+
-  geom_line()
+ggplot(data = df_cv_compare, aes(x = log(lambda), y = value, col = variable))+
+  geom_line() + 
+  theme_bw() + 
+  labs(y = "Average ARI"
+    
+  ) + 
+  theme(plot.title =element_text(size=20, face = "plain",hjust = 0.5),
+        axis.title=element_text(size=15, face = "plain")) +
+  scale_color_discrete(name = "Type of error", 
+                      labels = c("Absolute", "Quadratic")
+  ) 
 
 
+
+optimal_lambda_quadratic <- result_cv_quadratic[which.max(result_cv_quadratic$ARI),]$lambda
+optimal_lambda_absolute <- result_cv_absolute[which.max(result_cv_absolute$ARI),]$lambda
 
 
 ### section 4: test the optimal parameters from cv on a train and test set
@@ -440,18 +457,77 @@ fTrain_size <- floor(0.7 * nrow(mX_var))
 vTrain_id <- sample(nrow(mX_var), size = fTrain_size)
 
 # train and test split
-mX_train <- mX_var[vTrain_ind, ]
-mX_test <- mX_var[-vTrain_ind, ]
+mX_train <- mX_var[vTrain_id, ]
+mX_test <- mX_var[-vTrain_id, ]
 
-mY_train <- mY_num[vTrain_ind]
-mY_test <- mY_num[-vTrain_ind]
+mY_train <- mY_num[vTrain_id]
+mY_test <- mY_num[-vTrain_id]
 
-result_absolute <- svm_mm(sample_y, sample_x, lambda = 1000, hinge = "quadratic", k_huber = 3)
-result_quadratic <- svm_mm
+
+# train for the beta's
+result_quadratic <- svm_mm(mY = mY_train,mX= mX_train, lambda = optimal_lambda_quadratic, hinge = "quadratic")
+result_absolute <- svm_mm(mY = mY_train,mX= mX_train, lambda = optimal_lambda_absolute, hinge = "absolute")
+
+
+
+analyse_svm_result <- function(mY, mQ, plot_title = NaN){
+  
+  # get predicted category
+  mY_hat <- sign(mQ)
+  
+  # get several key statistics
+  resultOverview_quadratic <- confusionMatrix(as.factor(mY_test), as.factor(mY_hat))
+  
+  # get confusion matrix
+  mConfusionMatrix <- resultOverview_quadratic$table
+  
+  # get ARI
+  adjRand <- adjustedRandIndex(mY_test, mY_hat)
+  
+  dfComparePlot  <- data.frame(q = mQ, mY = mY_test) 
+  ComparePlot <- ggplot(data = dfComparePlot, aes(x = q, fill = as.factor(mY))) +
+    geom_histogram(bins = 50,alpha = 0.7) +
+    labs(
+      title = plot_title,
+      y = "Count",
+      x = TeX("$\\hat{q}$")
+    ) + 
+    scale_fill_discrete(name = "Result", 
+                        labels = c("Did not take subscription (-1)", "Took subscription (1)")
+                        )+
+    scale_fill_manual(values=c("red", "blue")) + 
+    theme_bw() +
+    theme(plot.title =element_text(size=20, face = "plain",hjust = 0.5),
+          axis.title=element_text(size=15, face = "plain"))
+    
+  
+  
+  return(list(mY_hat = mY_hat,
+              ConfusionMatrix <- mConfusionMatrix,
+              ARI = adjRand,
+              ComparePlot = ComparePlot
+  ))
+  
+  
+}
+
+# calculate the predicted y for this fold
+
+### first, quadratic
+mQ_test_quadratic <- mX_test %*% result_quadratic$v
+
+analysis_quadratic <- analyse_svm_result(mY_test, mQ_test_quadratic, plot_title = "Results for quadratic error" )
+analysis_quadratic$ComparePlot
+
+
+ 
+
+
+# get said beta's, and check prediction
+
 
 
 ### section 5: test the different kernels 
-
 
 result_svmmaj_cv_linKernel <- svmmajcrossval(sample_x, sample_y, 
                                              search.grid = list(lambda = 1.0e+15),
@@ -460,3 +536,78 @@ result_svmmaj_cv_linKernel <- svmmajcrossval(sample_x, sample_y,
                                              kernel = polydot,
                                              degree = 1)
 result_svmmaj_cv_linKernel
+
+
+
+
+
+
+### Section 6: miscellaneous 
+
+
+create_show_df <- function(vk_huber_show){
+  
+  df_show <- data.frame( q =seq(-3,3,by=0.2) )
+  
+  
+  df_show$q <- seq(-3,3,by=0.2)
+  col_count = 1
+  
+  for(ik_huber_show in vk_huber_show){
+    
+    vloss_plusOne <-(mQ_show <= -ik_huber_show) * (1 - mQ_show -(ik_huber_show + 1)/2) +
+      (mQ_show > -ik_huber_show) * (0.5 * (ik_huber_show+1)^-1 * pmax(0,1 - mQ_show) ^2) 
+    
+    vloss_minusOne <-  (mQ_show <= ik_huber_show) * (0.5 * (ik_huber_show+1)^-1 * pmax(0,1 + mQ_show) ^2) +
+      (mQ_show > ik_huber_show) * (mQ_show +1 -(ik_huber_show + 1)/2)
+    
+    col_names_huber = c(paste0("plusOne_", ik_huber_show),paste0("minusOne_", ik_huber_show) )
+    
+    df_show$plusOne <- vloss_plusOne
+    df_show$minusOne <- vloss_minusOne
+    
+    colnames(df_show)[-(1:col_count)] <- col_names_huber
+    col_count = col_count + 2
+    
+    
+  }
+  
+
+  return(df_show)
+
+}
+
+vk_huber_show = c(0)
+df_show <- create_show_df(vk_huber_show)
+
+vAbsError_plusOne <- (1 > mQ_show) * (1 - mQ_show)
+vAbsError_minusOne <- (1 > -mQ_show) * (1 - -mQ_show)
+
+vQuadError_plusOne <- (1 > mQ_show) * (1 - mQ_show)^2
+vQuadError_minusOne <- (1 > -mQ_show) * (1 - -mQ_show)^2
+
+
+df_show$plusOne_abserror <- vAbsError_plusOne
+df_show$minusOne_abserror <- vAbsError_minusOne
+df_show$plusOne_quaderror <- vQuadError_plusOne
+df_show$minusOne_quaderror <- vQuadError_minusOne
+
+
+
+df_show_plot <- melt(df_show, measure.vars = colnames(df_show)[-1] )
+
+ggplot(data = df_show_plot, aes(x = q, y = value, col = variable)) +
+  geom_line(size = 2) + 
+  theme_bw() + 
+  labs(y = "Loss") + 
+  lims(y = c(0,5)) + 
+    scale_color_discrete(name = "Function",
+                        labels = c("+1 huber loss, k = 0",
+                                   "-1 huber loss, k = 0",
+                                   "+1 absolute loss",
+                                   "-1 absolute loss",
+                                   "+1 quadratic loss",
+                                   "-1 quadratic loss")
+    )
+
+
