@@ -1,0 +1,32 @@
+{
+    "id": "A527509B",
+    "path": null,
+    "project_path": null,
+    "type": "r_dataframe",
+    "hash": "0",
+    "contents": "",
+    "dirty": false,
+    "created": 1606077373765.0,
+    "source_on_save": false,
+    "relative_order": 10,
+    "properties": {
+        "expression": "result_cv_huber",
+        "caption": "result_cv_huber",
+        "totalObservations": "40",
+        "displayedObservations": "40",
+        "variables": "3",
+        "cacheKey": "0EECC7A6",
+        "object": "result_cv_huber",
+        "environment": "",
+        "contentUrl": "grid_resource/gridviewer.html?env=&obj=result_cv_huber&cache_key=0EECC7A6&max_cols=50",
+        "preview": "0"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 3556447606339018784,
+    "encoding": "",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1606077373765,
+    "read_only": false,
+    "read_only_alternatives": []
+}

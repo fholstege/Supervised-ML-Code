@@ -1,7 +1,4 @@
 
-setwd("C:/Users/flori/OneDrive/Documents/GitHub/Supervised ML Code/SVM")
-
-
 # Packes required for subsequent analysis. P_load ensures these will be installed and loaded. 
 if (!require("pacman")) install.packages("pacman")
 pacman::p_load(fastDummies,
@@ -12,9 +9,17 @@ pacman::p_load(fastDummies,
                VeryLargeIntegers,
                matlib,
                latex2exp,
-               reshape2)
+               reshape2,
+               kernlab,
+               plot3D,
+               stargazer, 
+               rdetools)
 
-# create parameters for hinge errors
+#######################################################################################
+# Functions to compute the SVM and it cross validation 
+#######################################################################################
+
+# function that creates parameters for different hinge errors
 create_hinge_param <- function(mY, mQ, z, hinge = "absolute", epsilon = 1e-08, k_huber = 1){
   
   # when the hinge is absolute
@@ -41,19 +46,21 @@ create_hinge_param <- function(mY, mQ, z, hinge = "absolute", epsilon = 1e-08, k
     
   }else if(hinge == "huber"){
     
+    # a is the same for both cases
     a <- 0.5 * (k_huber + 1)^-1
     
-    b <- (mY == -1) * ((mQ <= -1) * (a * mQ) + 
+    # use if statements to define b and c
+    b <- (mY == -1) * ((mQ <= -1) * (a * mQ) + # if the Y == -1
             (mQ >= k_huber) * (a * mQ - 0.5) + 
             (mQ > -1 & mQ < k_huber) * (-a)) +
-         (mY == 1) * ((mQ <= -k_huber) * (0.5 + a * mQ) + 
+         (mY == 1) * ((mQ <= -k_huber) * (0.5 + a * mQ) + # if the Y == 1
             (mQ >= 1) * (a * mQ) + 
             (mQ > -k_huber & mQ < 1) * (a))
     
     c <- (mY == -1) * ((mQ <= -1) * (a * mQ^2) + 
-            (mQ >= k_huber) * (1 - (k_huber + 1)/2 + a * mQ^2) + 
+            (mQ >= k_huber) * (1 - (k_huber + 1)/2 + a * mQ^2) + # if the Y == -1
             (mQ > -1 & mQ < k_huber) * (a)) +
-         (mY == 1) * ((mQ <= -k_huber) * (1 - (k_huber + 1)/2  + a * mQ^2) + 
+         (mY == 1) * ((mQ <= -k_huber) * (1 - (k_huber + 1)/2  + a * mQ^2) + # if the Y == 1
             (mQ >= 1) * (a * mQ^2) + 
             (mQ > -k_huber & mQ < 1) * (a))
     
@@ -61,18 +68,16 @@ create_hinge_param <- function(mY, mQ, z, hinge = "absolute", epsilon = 1e-08, k
                 b = b, 
                 c = c))
   }
-  
-  
 }
 
-
-
-
+# calculate the loss of a particular prediction, based on the type of hinge error 
 calc_loss <- function(mW, lambda, z, mY = NA, hinge = "absolute", mQ = NA, k_huber = NA ){
   
+  # create penalty variable
   mWtW = t(mW) %*% mW
   penalty = lambda * mWtW
   
+  # use z for fater computation
   if(hinge == "absolute"){
 
     vloss <- (1 > z) * (1 - z)
@@ -81,20 +86,24 @@ calc_loss <- function(mW, lambda, z, mY = NA, hinge = "absolute", mQ = NA, k_hub
     
     vloss <- (1 > z) * (1 - z)^2
     
+  # for huber, use if statements to categorize each case
   }else if(hinge == "huber"){
     
-    vloss <- (mY == 1) * (mQ <= -k_huber) * (1 - mQ -(k_huber + 1)/2) +
+    vloss <- (mY == 1) * (mQ <= -k_huber) * (1 - mQ -(k_huber + 1)/2) + # if Y == 1
       (mY == 1) * (mQ > -k_huber) * (0.5 * (k_huber+1)^-1 * pmax(0,1 - mQ) ^2) +
-      (mY == -1) * (mQ <= k_huber) * (0.5 * (k_huber+1)^-1 * pmax(0,1 + mQ) ^2) +
+      (mY == -1) * (mQ <= k_huber) * (0.5 * (k_huber+1)^-1 * pmax(0,1 + mQ) ^2) + # if Y == -1
       (mY == -1) * (mQ > k_huber) * (mQ +1 -(k_huber + 1)/2)
     
   }else{
     stop("Not given an known hinge error")
   }
 
+  # return loss + penalty
   return(sum(vloss) + penalty)
 }
 
+
+# implement support vector machine
 svm_mm <- function(mY, mX, hinge = "absolute", lambda = 10, epsilon = 1e-08, k_huber = 3){
   
   # set initial weights and constant. From these, create initial v = c + w
@@ -117,7 +126,6 @@ svm_mm <- function(mY, mX, hinge = "absolute", lambda = 10, epsilon = 1e-08, k_h
   if(hinge == "quadratic"){
     Z = inv(t(mX) %*% mX + lambda * P) %*% t(mX)
   }
-  
   
   while(k ==1 || stepscore > epsilon){
     
@@ -188,7 +196,6 @@ svm_mm <- function(mY, mX, hinge = "absolute", lambda = 10, epsilon = 1e-08, k_h
     # move to next iteration
     k = k + 1
     vV_current = vV_update
-    
   }
 
   # get predicted category
@@ -221,10 +228,12 @@ svm_mm <- function(mY, mX, hinge = "absolute", lambda = 10, epsilon = 1e-08, k_h
   
 }
 
-
-svm_mm_cv <- function(mX, mY, lambda, folds, hinge = "absolute", k_huber = NA, epsilon = 1e-08, metric = "ARI"){
+# cross validation for svm 
+svm_mm_cv <- function(mX, mY, lambda, folds, hinge = "absolute", k_huber = NA, epsilon = 1e-08, metric = "ARI", svmmaj_bool = FALSE, kernel_type = NA, sigma = NA, degree = NA){
   
+  # save total score on metric here
   fTest_metric <- 0
+  
   
   #Perform k fold cross validation
   for(i in 1:length(folds)){
@@ -239,12 +248,34 @@ svm_mm_cv <- function(mX, mY, lambda, folds, hinge = "absolute", k_huber = NA, e
     mY_test <- mY[vTest_id]
     mX_test <- mX[vTest_id,]
     
+    
+    # if svmmaj bool selected, then implement with one of the kernels kernel selected
     # get result from training set
-    lResult = svm_mm(mY = mY_train, mX = mX_train, hinge = hinge, lambda = lambda, epsilon = epsilon, k_huber = k_huber )
-    mV_train <- lResult$v
+    if(svmmaj_bool & kernel_type == "linear"){
+      
+      lResult <- svmmaj(y = mY_train, X = mX_train, hinge = hinge, lambda = lambda, scale = "none", kernel = vanilladot)
+      mQ_test <- mX_test %*% lResult$beta
+      
+      # if chosen, implement rbf kernel 
+    }else if(svmmaj_bool & kernel_type == "rbf"){
+      
+      lResult <- svmmaj(y = mY_train, X = mX_train, hinge = hinge, lambda = lambda, scale = "none", kernel = rbfdot, kernel.sigma = sigma)
+      
+      
+      #if chosen, implement polynomial kernel
+    } else if(svmmaj_bool & kernel_type == "polynom"){
+      
+      lResult <- svmmaj(y = mY_train, X = mX_train, hinge = hinge, lambda = lambda, scale = "none", kernel = polydot, kernel.degree = degree)
+      mQ_test <- mX_test %*% lResult$beta
+    
+    } # if chosen, implement non-kernel version
+      else {
+      lResult = svm_mm(mY = mY_train, mX = mX_train, hinge = hinge, lambda = lambda, epsilon = epsilon, k_huber = k_huber )
+      mQ_test <- mX_test %*%  lResult$v
+      
+    }
     
     # calculate the predicted y for this fold
-    mQ_test <- mX_test %*% mV_train
     mY_hat <- sign(mQ_test)
     
     if(metric == "ARI"){
@@ -278,9 +309,10 @@ svm_mm_cv <- function(mX, mY, lambda, folds, hinge = "absolute", k_huber = NA, e
   
 }
 
-svm_mm_gridsearch <- function(mX, mY, lambda, hinge = "absolute", k, k_huber = NA, epsilon = 1e-08, metric = "ARI"){
+# search best combination of parameters with gridsearch
+svm_mm_gridsearch <- function(mX, mY, lambda, hinge = "absolute", k, k_huber = NA, epsilon = 1e-08, metric = "ARI", kernel_type = NA, svmmaj_bool = FALSE, sigma = NA, degree = NA){
   
-  
+  # change parameter grid based on type of hinge error
   if (hinge == "huber"){
     
     mParamgrid = expand.grid(lambda, k_huber)
@@ -303,7 +335,7 @@ svm_mm_gridsearch <- function(mX, mY, lambda, hinge = "absolute", k, k_huber = N
     print(param[1,c(1,2)])
     
     # test these with k-fold
-    cv_result <- svm_mm_cv(mX = mX,mY= mY, lambda =param[1,1], k_huber = param[1,2],folds = folds, hinge = hinge, epsilon = epsilon, metric = metric)
+    cv_result <- svm_mm_cv(mX = mX,mY= mY, lambda =param[1,1], k_huber = param[1,2],folds = folds, hinge = hinge, epsilon = epsilon, metric = metric, svmmaj_bool = svmmaj_bool, kernel_type = kernel_type, sigma = sigma, degree = degree)
 
     print(cv_result$metric)
     
@@ -313,14 +345,115 @@ svm_mm_gridsearch <- function(mX, mY, lambda, hinge = "absolute", k, k_huber = N
   
   return(mParamgrid)
 }
+
+
+#######################################################################################
+# Helper functions for subsequent analysis
+#######################################################################################
+
+# function to analyse results of svm_mm
+analyse_svm_result <- function(mY, mQ, plot_title = NaN){
+  
+  # get predicted category
+  mY_hat <- sign(mQ)
+  
+  # get confusion matrix
+  mConfusionMatrix <- table(mY,mY_hat)
+  
+  # get ARI
+  adjRand <- adjustedRandIndex(mY_test, mY_hat)
+  
+  # make plot to show which ones were wrongly predicted
+  dfComparePlot  <- data.frame(q = mQ, mY = mY_test) 
+  ComparePlot <- ggplot(data = dfComparePlot, aes(x = q, fill = as.factor(mY))) +
+    geom_histogram(bins = 50,alpha = 0.7) +
+    labs(
+      title = plot_title,
+      y = "Count",
+      x = TeX("$q$")
+    ) + 
+    scale_fill_manual(values=c("red", "blue"), 
+                      name = "Result", 
+                      labels = c("Did not take subscription (-1)", "Took subscription (1)")) + 
+    theme_bw() +
+    theme(plot.title =element_text(size=20, face = "plain",hjust = 0.5),
+          axis.title=element_text(size=15, face = "plain"))
+  
+  return(list(mY_hat = mY_hat,
+              "Table" = mConfusionMatrix,
+              ARI = adjRand,
+              ComparePlot = ComparePlot
+  ))
   
   
+}
+
+# function to create plot that shows difference between types of errors
+create_show_df <- function(vk_huber_show){
+  
+  df_show <- data.frame( q =seq(-3,3,by=0.2) )
+  mQ_show = df_show$q
+  col_count = 1
+  
+  for(ik_huber_show in vk_huber_show){
+    
+    vloss_plusOne <-(mQ_show <= -ik_huber_show) * (1 - mQ_show -(ik_huber_show + 1)/2) +
+      (mQ_show > -ik_huber_show) * (0.5 * (ik_huber_show+1)^-1 * pmax(0,1 - mQ_show) ^2) 
+    
+    vloss_minusOne <-  (mQ_show <= ik_huber_show) * (0.5 * (ik_huber_show+1)^-1 * pmax(0,1 + mQ_show) ^2) +
+      (mQ_show > ik_huber_show) * (mQ_show +1 -(ik_huber_show + 1)/2)
+    
+    col_names_huber = c(paste0("plusOne_", ik_huber_show),paste0("minusOne_", ik_huber_show) )
+    print(col_names_huber)
+    
+    df_show$plusOne <- vloss_plusOne
+    df_show$minusOne <- vloss_minusOne
+    
+    colnames(df_show)[-(1:col_count)] <- col_names_huber
+    col_count = col_count + 2
+    
+    
+  }
+  
+  return(df_show)
+  
+}
+
+# quick function to get the right df
+create_dfCompare_cv <- function(svmmaj_cv_obj){
+  
+  AdjRand_compare <- data.frame(svmmaj_cv_obj$param.grid[,-ncol(svmmaj_cv_obj$param.grid)])
+  AdjRand_compare$ARI <- 0
+  
+  mQ_cv <-svmmaj_cv_obj$qhat
+  
+  for(i in 1:k){
+    
+    mQ_fold <- mQ_cv[i,]
+    print(mQ_fold)
+    
+    adjRand_fold <- adjustedRandIndex(sample_y, mQ_fold)
+    
+    AdjRand_compare$ARI[i] = adjRand_fold
+    
+  }
+  
+  return(AdjRand_compare)
+  
+  
+}
+  
+  
+
+#######################################################################################
+# Analysis of bank data
+#######################################################################################
 
 
 #### section 1: data pre-processing
 
 # ensure that we can reproduce the code
-set.seed(123)
+set.seed(333)
 
 # load bank data
 bank <- read.csv("bank-additional.csv", sep = ";")
@@ -375,7 +508,7 @@ sample_y = mY_num[sample_id]
 # but still different beta's? most likely something to do with the transformation of the data...
 
 # our implementation
-result = svm_mm(sample_y, sample_x, lambda = 0.1, hinge = "huber", k_huber = 2)
+result = svm_mm(sample_y, sample_x, lambda = 0.1, hinge = "huber", k_huber = 1)
 result$v
 result$loss
 result$ConfusionTable
@@ -383,41 +516,49 @@ result$Accuracy
 result$ARI
 
 #svmmaj implementation
-result_svmmaj <- svmmaj(sample_x,sample_y, lambda = 10, scale = "none",hinge = "quadratic")
+result_svmmaj <- svmmaj(sample_x,sample_y, lambda = 0.1, scale = "none",hinge = "huber")
 result_svmmaj$beta 
 result_svmmaj$loss
 result_svmmaj$q
 
 
-
-
 ### section 3: compare cross validation results, and create cv plots
 
 # check out the following parameters
-vLambda =10^seq(5, -3, length.out= 10) # 10
+vLambda =10^seq(5, -3, length.out= 10) 
 vk_huber = seq(0,3, by = 1)
 
-# k-fold of 20 to have enough info, but not make it computationally too intensive
-k = 20
+# k-fold of 10 to have enough info, but not make it computationally too intensive
+k = 10
 
-# cv comparison
-result_svm_mm_cv <- svm_mm_gridsearch(sample_x, sample_y, k = k, lambda = vLambda, k_huber = vk_huber, hinge = "huber", metric = "misclassification")
-result_svmmaj_cv <- svmmajcrossval(sample_x,sample_y, search.grid = list(lambda = vLambda) , k = k,scale = "none",hinge = "huber")
+# cv comparison - example is quadratic since faster
+result_svm_mm_cv <- svm_mm_gridsearch(sample_x, sample_y, k = k, lambda = vLambda, hinge = "quadratic", metric = "misclassification")
+result_svmmaj_cv <- svmmajcrossval(sample_x,sample_y, search.grid = list(lambda = vLambda) , k = k,scale = "none",hinge = "quadratic")
 
 # data cleaning of our cv results
 colnames(result_svm_mm_cv) <- c("lambda", "misclassification")
 
 # finds same lambda for quadratic
 ggplot(data = result_svm_mm_cv, aes(x = log(lambda), y = misclassification, col = "red"))+
-  geom_line()+
-  geom_line(data = result_svmmaj_cv$param.grid, aes(y = loss, col = "blue")) +
-  theme_minimal()
+  geom_line(size = 1.5)+
+  geom_line(data = result_svmmaj_cv$param.grid, aes(y = loss, col = "blue"), size = 1.5) +
+  scale_color_manual(name = "Type of CV",
+                       labels = c("svmmaj",
+                                  "our implementation"),
+                     values = c("red","blue")
+  ) + 
+  labs(title = "Comparing the CV implementations (quadratic error)", 
+       y = "Misclassification") +
+  theme_bw()  +
+  theme(plot.title =element_text(size=20, face = "plain",hjust = 0.5),
+                    axis.title=element_text(size=15, face = "plain"))
+
 
 
 ## now create plots per type of error for optimal lambda
+result_cv_absolute <- svm_mm_gridsearch(sample_x, sample_y, k = k, lambda = vLambda, hinge = "absolute", metric = "ARI")
 result_cv_quadratic <- svm_mm_gridsearch(sample_x, sample_y, k = k, lambda = vLambda, hinge = "quadratic", metric = "ARI")
 result_cv_huber <- svm_mm_gridsearch(sample_x, sample_y, k = k, lambda = vLambda, k_huber = vk_huber, hinge = "huber", metric = "ARI")
-result_cv_absolute <- svm_mm_gridsearch(sample_x, sample_y, k = k, lambda = vLambda, hinge = "absolute", metric = "ARI")
 
 # change column names
 colnames(result_cv_quadratic) <- c("lambda", "ARI")
@@ -425,160 +566,194 @@ colnames(result_cv_absolute) <- c("lambda", "ARI")
 colnames(result_cv_huber) <- c("lambda", "k_huber", "ARI")
 
 
-df_cv_compare <- data.frame(lambda = result_cv_absolute$lambda, abs_ARI = result_cv_absolute$ARI, quad_ARI = result_cv_quadratic$ARI)
+optimal_lambda_quadratic <- round(result_cv_quadratic[which.max(result_cv_quadratic$ARI),]$lambda,1)
+optimal_lambda_absolute <- round(result_cv_absolute[which.max(result_cv_absolute$ARI),]$lambda,1)
+optimal_lambda_huber <- result_cv_huber[which.max(result_cv_huber$ARI),]$lambda
+optimal_k_huber <- result_cv_huber[which.max(result_cv_huber$ARI),]$k_huber
+
+
+cv_huber_ari <- result_cv_huber[result_cv_huber$k_huber == 1,]$ARI
+
+# create dataframe for plot that compares quadratic and absolute error
+df_cv_compare <- data.frame(lambda = result_cv_absolute$lambda, abs_ARI = result_cv_absolute$ARI, quad_ARI = result_cv_quadratic$ARI, huber_ARI = cv_huber_ari)
 df_cv_compare <- melt(df_cv_compare, id.vars = "lambda")
-df_cv_compare
 
 # finds same lambda for quadratic
 ggplot(data = df_cv_compare, aes(x = log(lambda), y = value, col = variable))+
-  geom_line() + 
-  theme_bw() + 
-  labs(y = "Average ARI"
-    
+  geom_line(size = 1.5) + 
+  labs(y = "Average ARI",
+       title = "Result of CV"
+       
   ) + 
+  scale_color_manual(name = "Type of error", 
+                     labels = c("Absolute", "Quadratic", "Huber (at k = 1)"),
+                     values = c("red","blue", "green")
+  )  + 
+  theme_bw()  +
   theme(plot.title =element_text(size=20, face = "plain",hjust = 0.5),
-        axis.title=element_text(size=15, face = "plain")) +
-  scale_color_discrete(name = "Type of error", 
-                      labels = c("Absolute", "Quadratic")
-  ) 
-
-
-
-optimal_lambda_quadratic <- result_cv_quadratic[which.max(result_cv_quadratic$ARI),]$lambda
-optimal_lambda_absolute <- result_cv_absolute[which.max(result_cv_absolute$ARI),]$lambda
+        axis.title=element_text(size=15, face = "plain"))
 
 
 ### section 4: test the optimal parameters from cv on a train and test set
 
-## 70% of the sample size
-fTrain_size <- floor(0.7 * nrow(mX_var))
+set.seed(11)
+
+## 75% of the sample size
+fTrain_size <- floor(0.75 * nrow(sample_x))
 
 # get train indexes for the dataset
-vTrain_id <- sample(nrow(mX_var), size = fTrain_size)
+vTrain_id <- sample(nrow(sample_x), size = fTrain_size)
 
 # train and test split
-mX_train <- mX_var[vTrain_id, ]
-mX_test <- mX_var[-vTrain_id, ]
+mX_train <- sample_x[vTrain_id, ]
+mX_test <- sample_x[-vTrain_id, ]
 
-mY_train <- mY_num[vTrain_id]
-mY_test <- mY_num[-vTrain_id]
-
+mY_train <- sample_y[vTrain_id]
+mY_test <- sample_y[-vTrain_id]
 
 # train for the beta's
-result_quadratic <- svm_mm(mY = mY_train,mX= mX_train, lambda = optimal_lambda_quadratic, hinge = "quadratic")
 result_absolute <- svm_mm(mY = mY_train,mX= mX_train, lambda = optimal_lambda_absolute, hinge = "absolute")
+result_quadratic <- svm_mm(mY = mY_train,mX= mX_train, lambda = optimal_lambda_quadratic, hinge = "quadratic")
+result_huber <- svm_mm(mY = mY_train, mX= mX_train, lambda = optimal_lambda_huber,k_huber = optimal_k_huber, hinge = "huber")
 
 
-
-analyse_svm_result <- function(mY, mQ, plot_title = NaN){
-  
-  # get predicted category
-  mY_hat <- sign(mQ)
-  
-  # get several key statistics
-  resultOverview_quadratic <- confusionMatrix(as.factor(mY_test), as.factor(mY_hat))
-  
-  # get confusion matrix
-  mConfusionMatrix <- resultOverview_quadratic$table
-  
-  # get ARI
-  adjRand <- adjustedRandIndex(mY_test, mY_hat)
-  
-  dfComparePlot  <- data.frame(q = mQ, mY = mY_test) 
-  ComparePlot <- ggplot(data = dfComparePlot, aes(x = q, fill = as.factor(mY))) +
-    geom_histogram(bins = 50,alpha = 0.7) +
-    labs(
-      title = plot_title,
-      y = "Count",
-      x = TeX("$\\hat{q}$")
-    ) + 
-    scale_fill_discrete(name = "Result", 
-                        labels = c("Did not take subscription (-1)", "Took subscription (1)")
-                        )+
-    scale_fill_manual(values=c("red", "blue")) + 
-    theme_bw() +
-    theme(plot.title =element_text(size=20, face = "plain",hjust = 0.5),
-          axis.title=element_text(size=15, face = "plain"))
-    
-  
-  
-  return(list(mY_hat = mY_hat,
-              ConfusionMatrix <- mConfusionMatrix,
-              ARI = adjRand,
-              ComparePlot = ComparePlot
-  ))
-  
-  
-}
-
-# calculate the predicted y for this fold
-
-### first, quadratic
+# calculate the q for test set, based on weights from training
 mQ_test_quadratic <- mX_test %*% result_quadratic$v
+mQ_test_absolute <- mX_test %*% result_absolute$v
+mQ_test_huber <- mX_test %*% result_huber$v
 
+# 
 analysis_quadratic <- analyse_svm_result(mY_test, mQ_test_quadratic, plot_title = "Results for quadratic error" )
+analysis_absolute <- analyse_svm_result(mY_test, mQ_test_absolute, plot_title = "Results for the absolute error")
+analysis_huber <- analyse_svm_result(mY_test, mQ_test_huber, plot_title = "Results for the Huber error")
+
+# get results per type
+
+# first ARI
+analysis_quadratic$ARI
+analysis_absolute$ARI
+analysis_huber$ARI
+
+# second, confusion matrix
+analysis_quadratic$Table
+analysis_absolute$Table
+analysis_huber$Table
+
+# show plots
 analysis_quadratic$ComparePlot
+analysis_absolute$ComparePlot
+analysis_huber$ComparePlot
 
 
- 
+### section 5: get hyperparameters for the RBF and polynomial kernels 
+
+# define sigma as to get a gamme of 1/m
+sigma_rbf <- ncol(mX_train)/2
+
+# define the lambdas and k_huber over which to iterate
+vLambda_kernel <-  10^seq(5, -3, length.out= 10) 
+k_huber_kernel <- seq(0,3, by = 1)
+
+grid_absQuad <- list(lambda = vLambda_kernel)
+grid_huber <- list(lambda = vLambda_kernel, hinge.delta = k_huber_kernel)
 
 
-# get said beta's, and check prediction
+# RBF
+result_cv_quadratic_rbf <- svmmajcrossval(X = sample_x, y = sample_y, hinge = "quadratic", ngroup = k,
+                                          search.grid = grid_absQuad, scale = "none",kernel = rbfdot, sigma = sigma_rbf)
 
-
-
-### section 5: test the different kernels 
-
-result_svmmaj_cv_linKernel <- svmmajcrossval(sample_x, sample_y, 
-                                             search.grid = list(lambda = 1.0e+15),
-                                             k = k, scale = "none", 
-                                             hinge = "quadratic", 
-                                             kernel = polydot,
-                                             degree = 1)
-result_svmmaj_cv_linKernel
+result_cv_huber_rbf <- svmmajcrossval(X = sample_x, y = sample_y, hinge = "huber", ngroup = k,
+                                      search.grid = grid_huber, scale = "none",kernel = rbfdot, sigma = sigma_rbf)
 
 
 
 
+# create dfs to compare
+df_Compare_rbf_quad_cv <- create_dfCompare_cv(result_cv_quadratic_rbf)
+df_Compare_rbf_huber_cv <- create_dfCompare_cv(result_cv_huber_rbf)
+colnames(df_Compare_rbf_quad_cv) <- c("lambda", "ARI")
+colnames(df_Compare_rbf_huber_cv) <- c("lambda", "k_huber", "ARI")
+
+# define optimal parameters for rbf
+optimal_lambda_quadratic_rbf <- df_Compare_rbf_quad_cv[which.max(df_Compare_rbf_quad_cv$ARI),]$lambda
+optimal_lambda_huber_rbf <- df_Compare_rbf_huber_cv[which.max(df_Compare_rbf_huber_cv$ARI),]$lambda
+optimal_k_huber_rbf <- df_Compare_rbf_huber_cv[which.max(df_Compare_rbf_huber_cv$ARI),]$k_huber
 
 
-### Section 6: miscellaneous 
+## polynomial
+degree_polynom = 2
+
+result_cv_quadratic_polynom <- svmmajcrossval(X = sample_x, y = sample_y, hinge = "quadratic", ngroup = k,
+                                              search.grid = grid_absQuad, scale = "none",kernel = rbfdot, degree = degree_polynom)
+result_cv_huber_polynom <- svmmajcrossval(X = sample_x, y = sample_y, hinge = "huber", ngroup = k,
+                                          search.grid = grid_huber, scale = "none",kernel = rbfdot, degree = degree_polynom)
 
 
-create_show_df <- function(vk_huber_show){
-  
-  df_show <- data.frame( q =seq(-3,3,by=0.2) )
-  
-  
-  df_show$q <- seq(-3,3,by=0.2)
-  col_count = 1
-  
-  for(ik_huber_show in vk_huber_show){
-    
-    vloss_plusOne <-(mQ_show <= -ik_huber_show) * (1 - mQ_show -(ik_huber_show + 1)/2) +
-      (mQ_show > -ik_huber_show) * (0.5 * (ik_huber_show+1)^-1 * pmax(0,1 - mQ_show) ^2) 
-    
-    vloss_minusOne <-  (mQ_show <= ik_huber_show) * (0.5 * (ik_huber_show+1)^-1 * pmax(0,1 + mQ_show) ^2) +
-      (mQ_show > ik_huber_show) * (mQ_show +1 -(ik_huber_show + 1)/2)
-    
-    col_names_huber = c(paste0("plusOne_", ik_huber_show),paste0("minusOne_", ik_huber_show) )
-    
-    df_show$plusOne <- vloss_plusOne
-    df_show$minusOne <- vloss_minusOne
-    
-    colnames(df_show)[-(1:col_count)] <- col_names_huber
-    col_count = col_count + 2
-    
-    
-  }
-  
 
-  return(df_show)
+df_Compare_polynom_quad_cv <- create_dfCompare_cv(result_cv_quadratic_polynom)
+df_Compare_polynom_huber_cv <- create_dfCompare_cv(result_cv_huber_polynom)
 
-}
+df_Compare_polynom_quad_cv
+
+colnames(df_Compare_polynom_quad_cv) <- c("lambda", "ARI")
+colnames(df_Compare_polynom_quad_cv) <- c("lambda", "k_huber", "ARI")
+
+optimal_lambda_quadratic_polynom <- df_Compare_polynom_quad_cv[which.max(df_Compare_polynom_quad_cv$ARI),]$lambda
+optimal_lambda_huber_polynom <- df_Compare_polynom_huber_cv[which.max(df_Compare_polynom_huber_cv$ARI),]$lambda
+optimal_k_huber_polynom <- df_Compare_polynom_huber_cv[which.max(df_Compare_polynom_huber_cv$ARI),]$k_huber
+
+
+### section 6: test kernels on test set
+
+# train for the beta - first linear kernels
+result_quadratic_linKernel <-  svmmaj(y = mY_train,X= mX_train, lambda = optimal_lambda_quadratic_linKernel, hinge = "quadratic", kernel = vanilladot)
+result_huber_linKernel <- svmmaj(y = mY_train,X= mX_train, lambda = optimal_lambda_quadratic_linKernel,degree = optimal_k_huber_linKernel, hinge = "huber", kernel = vanilladot)
+
+mQ_test_quadratic_linKernel <- mX_test %*% result_quadratic_linKernel$beta
+mQ_test_huber_linKernel <- mX_test %*% result_huber_linKernel$beta
+
+analysis_quadratic_linKernel <- analyse_svm_result(mY_test, mQ_test_quadratic_linKernel)
+analysis_huber_linKernel <- analyse_svm_result(mY_test, mQ_test_huber_linKernel)
+
+# RBF kernels
+result_quadratic_rbf <- svmmaj(y = mY_train,X= mX_train, lambda = optimal_lambda_quadratic_rbf, hinge = "quadratic", kernel = rbfdot, kernel.sigma = 0.05)
+result_huber_rbf <- svmmaj(y = mY_train,X= mX_train, lambda = optimal_lambda_huber_rbf, degree = optimal_k_huber_rbf, hinge = "huber", kernel = rbfdot, )
+
+
+mQ_test_quadratic_rbf <-  predict(result_quadratic_rbf, X.new = mX_test, y = mY_test)[1:nrow(mX_test)]
+mQ_test_huber_rbf <- predict(result_huber_rbf, X.new = mX_test, y = mY_test)[1:nrow(mX_test)]
+
+
+analysis_quadratic_rbf <- analyse_svm_result(mY_test, mQ_test_quadratic_rbf)
+analysis_huber_rbf <- analyse_svm_result(mY_test, mQ_test_huber_rbf)
+
+
+analysis_quadratic_rbf
+analysis_huber_rbf
+
+# Polynom
+result_quadratic_polynom <- svmmaj(y = mY_train,X= mX_train, lambda = optimal_lambda_quadratic_rbf, hinge = "quadratic", kernel = polydot, degree_polynom)
+result_huber_polynom <- svmmaj(y = mY_train,X= mX_train, lambda = optimal_lambda_huber_rbf, degree = optimal_k_huber_rbf, hinge = "huber", kernel = polydot, degree_polynom)
+
+mQ_test_quadratic_polynom <-  predict(result_quadratic_polynom, X.new = mX_test, y = mY_test)[1:nrow(mX_test)]
+mQ_test_huber_polynom <- predict(result_huber_polynom, X.new = mX_test, y = mY_test)[1:nrow(mX_test)]
+
+
+analysis_quadratic_polynom <- analyse_svm_result(mY_test, mQ_test_quadratic_polynom)
+analysis_huber_polynom <- analyse_svm_result(mY_test, mQ_test_huber_polynom)
+
+analysis_quadratic_polynom
+analysis_huber_polynom
+
+
+### Section 7: miscellaneous plots
+
+
 
 vk_huber_show = c(0)
-df_show <- create_show_df(vk_huber_show)
+df_show_plot <- create_show_df(vk_huber_show)
+df_show_plot
+
 
 vAbsError_plusOne <- (1 > mQ_show) * (1 - mQ_show)
 vAbsError_minusOne <- (1 > -mQ_show) * (1 - -mQ_show)
@@ -587,27 +762,28 @@ vQuadError_plusOne <- (1 > mQ_show) * (1 - mQ_show)^2
 vQuadError_minusOne <- (1 > -mQ_show) * (1 - -mQ_show)^2
 
 
-df_show$plusOne_abserror <- vAbsError_plusOne
-df_show$minusOne_abserror <- vAbsError_minusOne
-df_show$plusOne_quaderror <- vQuadError_plusOne
-df_show$minusOne_quaderror <- vQuadError_minusOne
+df_show_plot$plusOne_abserror <- vAbsError_plusOne
+df_show_plot$minusOne_abserror <- vAbsError_minusOne
+df_show_plot$plusOne_quaderror <- vQuadError_plusOne
+df_show_plot$minusOne_quaderror <- vQuadError_minusOne
+
+df_show_plot_melted
 
 
+df_show_plot_melted <- melt(df_show_plot, measure.vars = colnames(df_show_plot)[-1] )
 
-df_show_plot <- melt(df_show, measure.vars = colnames(df_show)[-1] )
-
-ggplot(data = df_show_plot, aes(x = q, y = value, col = variable)) +
+ggplot(data = df_show_plot_melted, aes(x = q, y = value, col = variable)) +
   geom_line(size = 2) + 
   theme_bw() + 
   labs(y = "Loss") + 
   lims(y = c(0,5)) + 
     scale_color_discrete(name = "Function",
-                        labels = c("+1 huber loss, k = 0",
-                                   "-1 huber loss, k = 0",
-                                   "+1 absolute loss",
-                                   "-1 absolute loss",
-                                   "+1 quadratic loss",
-                                   "-1 quadratic loss")
+                        labels = c("+1 Huber loss, k = 0",
+                                   "-1 Huber loss,  = 0",
+                                   "+1 Absolute loss",
+                                   "-1 Absolute loss",
+                                   "+1 Quadratic loss",
+                                   "-1 Quadratic loss")
     )
 
 

@@ -1,0 +1,24 @@
+{
+    "id": "4D4D0646",
+    "path": "~/GitHub/Supervised ML Code/SVM/SVM.R",
+    "project_path": "SVM/SVM.R",
+    "type": "r_source",
+    "hash": "0",
+    "contents": "",
+    "dirty": true,
+    "created": 1605946960562.0,
+    "source_on_save": true,
+    "relative_order": 2,
+    "properties": {
+        "cursorPosition": "684,0",
+        "scrollLine": "670"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1606139607,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1606147508744,
+    "read_only": false,
+    "read_only_alternatives": []
+}

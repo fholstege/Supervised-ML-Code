@@ -1,0 +1,432 @@
+"Assignment-IV-v5.R
+Purpose:
+  Predict whether phone call results in term deposit subscription via SVM.
+
+Version:
+1   Data
+2   Package implementation
+3   Compare results for fixed lambda
+4   CV using parallelisation
+5   Diagnostics 
+8   All including result matrix
+9   Half result matrix using result lists of v6
+12  v11 including rowresults
+13  exporting to latex table
+
+Date:
+  2020/11/19
+
+Author(s):
+  Ramon de Punder, Stan Thijssen"
+
+## Packages
+if (!require("rstudioapi")) install.packages("rstudioapi")
+if (!require("SVMMaj")) install.packages("SVMMaj")
+if (!require("MASS")) install.packages("MASS")
+if (!require("kernlab")) install.packages("kernlab")
+if (!require("ggplot2")) install.packages("ggplot2")
+if (!require("tikzDevice")) install.packages("tikzDevice")
+if (!require("xtable")) install.packages("xtable")
+if (!require("tictoc")) install.packages("tictoc")
+if (!require("parallel")) install.packages("parallel")
+if (!require("doParallel")) install.packages("doParallel")
+if (!require("foreach")) install.packages("foreach")
+
+require(rstudioapi)   # working directory
+require(SVMMaj)       # SVM 
+require(MASS)         # generalised inverse
+require(kernlab)      # vanilla kernel
+require(ggplot2)      # plot formatting
+require(tikzDevice)   # tikz
+require(xtable)       # LaTeX tables
+require(tictoc)
+require(parallel)
+require(doParallel)
+require(foreach)
+
+# cleaning
+rm(list = ls())
+graphics.off()
+setwd(dirname(getActiveDocumentContext()$path ))
+
+LinearSVD <- function(vV0=NA, mX=NA, vY=NA, sHinge= NA, dLambda=NA, dK=1, dPrecision=10^-8){
+  "
+    Purpose:
+      Classification through Linear Support Vector machine via iterative minimisation procedure 
+      detailed in Groenen et al. (2008)  
+      
+    Inputs:
+      vV0           vector, starting values parameter vector
+      mX            matrix, predictor variables
+      vY            vector, dependent variable
+      sHinge        string, name of hinge function, choose from: 
+                    'absolute', 'quadratic', 'huber'
+      dLambda       double, lambda 
+      dK            double, meta parameter Huber hinge, default is 1 
+      dPrecision    double, precision, default is 10^-8
+      
+    Return:
+      lOut          list, list containing output 
+                      Beta: estimated parameters including constant
+                      Loss: calculated loss
+    "
+  
+  
+  Loss <- function(vV=NA, vY=NA, mX=NA, dLambda=NA){
+    vQ <- mX %*% vV 
+    return(sum(pmax(0, vQ + 1)*(vY == -1)) + sum(pmax(0, 1 - vQ)*(vY == 1)) + sum(vV[-1]^2))
+  }
+  
+  dLossOld <- 0
+  dLoss <- Loss(vV=vV0, vY=vY, mX=mX, dLambda=dLambda)
+  vNegIdx <- vY == -1
+  vPosIdx <- vY == 1
+  mP <- diag(c(0, rep(1, ncol(mX)-1))) 
+  k <- 1
+  vV <- vV0
+  
+  while(k==1 | (dLossOld - dLoss)/dLossOld > dPrecision){
+    k <- k + 1
+    vQ <- mX %*% vV 
+    dLossOld <- dLoss
+    if(sHinge=='absolute'){
+      vA <- as.vector(1/(4 * abs(vQ + 1))*vNegIdx + 1/(4 * abs(1 - vQ))*vPosIdx)  
+      vB <- -(vA + 1/4)*vNegIdx + (vA + 1/4)*vPosIdx
+      mA <- diag(vA)
+    }
+    else if(sHinge=='quadratic'){
+      vB <- pmin(vQ, -1)*vNegIdx + pmax(vQ, 1)*vPosIdx
+      mA <- diag(length(vQ))
+      }
+    else if(sHinge=='huber'){
+      dA <- 1/(2*(dK+1))
+      mA <- diag(length(vQ)) * dA
+      vB <- (dA * vQ * (vQ <= -1) - dA * (-1 < vQ) * (vQ < dK) + (dA * vQ - 1/2) * (vQ >= dK))*vNegIdx 
+        + ((1/2 + dA * vQ ) * (vQ < -dK) + dA * (-dK < vQ)*(vQ<-1) + dA* vQ*(vQ >= 1))*vPosIdx
+    }
+    else{
+      print('Error: Hinge function not supported.')
+    }
+    # vVPlus <- solve(t(mX) %*% mA %*% mX + dLambda*mP, t(mX) %*% vB)
+    vVPlus <- ginv(t(mX) %*% mA %*% mX + dLambda*mP) %*% (t(mX) %*% vB)
+    vVUpdate <- vVPlus #vV - 2*(vVPlus - vV)
+    vV <- vVUpdate
+    dLoss <- Loss(vVPlus, vY, mX, dLambda)
+  }
+  return(list('Beta'= vV, 'Loss'= dLoss))
+}
+
+CV_RMSE <- function(iFold=NA, vV0=NA, mX=NA, vY=NA, sHinge= NA, vLambda=NA, dK=1, dPrecision=10^-8, fFunc=LinearSVD, iSeedCV=iSeedCV){
+  "
+    Purpose:
+      Calculate CV RMSE matrix for lambda grid
+      
+    Inputs:
+      iFold         number of folds CV
+      vV0           vector, starting values parameter vector
+      mX            matrix, predictor variables
+      vY            vector, dependent variable
+      sHinge        string, name of hinge function, choose from: 
+                    'absolute', 'quadratic', 'huber'
+      vLambda       vector, grid lambda
+      dK            double, meta parameter Huber hinge, default is 1 
+      dPrecision    double, precision, default is 10^-8
+      fFunc         function, default is LinearSVD 
+                    note: including the function as argument is useful for 
+                    parallel for loop due to DoParallel package
+      iSeedCV       integer, random seed 
+      
+    Return:
+      mOut          matrix, row index is lambda grid and
+                      first column: RMSE 
+                      second column: standard deviation
+    "
+  
+  iLambdaGrid <- length(vLambda)
+  set.seed(iSeedCV)
+  CV <- function(iFold=iFold, vV0=vV0, mX=mX, vY=vY, sHinge= sHinge, dLambda=dLambda, dK=dK, dPrecision=dPrecision){
+    iN <- length(vY)
+    vInts <- sample(iN)
+    iFold_length <- iN/iFold
+    vRMSE <- rep(NA,iFold) 
+    for(i in 1:iFold){
+      vTestrows <- vInts[floor(iFold_length*(i-1)+1):floor(iFold_length*i)]
+      mXTraining <- mX[-vTestrows,]
+      mXTest <- mX[vTestrows,]
+      vYTraining <- vY[-vTestrows]
+      vYTest <- vY[vTestrows]
+      vBhatTraining <- fFunc(vV0=vV0, mX=mXTraining, vY=vYTraining, sHinge=sHinge, dLambda=dLambda, dK=dK)$Beta 
+      vYhat <- mXTest %*% vBhatTraining 
+      vRMSE[i] <- sqrt(mean((as.numeric(vYTest) - vYhat)^2))
+    }
+    return(c(mean(vRMSE), sd(vRMSE)/sqrt(iFold)))
+  }
+  
+  
+  cores=detectCores()
+  cl <- makeCluster(cores[1], setup_strategy = "sequential") #not to overload your computer
+  registerDoParallel(cl)
+  mOut <- foreach(j=1:iLambdaGrid, .combine=rbind, .packages = c("MASS")) %dopar% {
+    tempMatrix = CV(iFold=iFold, vV0=vV0, mX=mX, vY=vY, sHinge= sHinge, dLambda=vLambda[j], dK=dK, dPrecision=dPrecision) 
+  }
+  stopCluster(cl)
+  
+  return(mOut)
+}
+
+CV_Figure <- function(iFold=NA, vV0=NA, mX=NA, vY=NA, sHinge=NA, vLambda=NA, dK=1, dPrecision=10^-8, iSeedCV=iSeedCV){
+  "
+    Purpose:
+      Calculate optimal value for lambda and plot RMSE error plot for lambda grid
+      
+     Inputs:
+      iFold         number of folds CV
+      vV0           vector, starting values parameter vector
+      mX            matrix, predictor variables
+      vY            vector, dependent variable
+      sHinge        string, name of hinge function, choose from: 
+                    'absolute', 'quadratic', 'huber'
+      vLambda       vector, grid lambda
+      dK            double, meta parameter Huber hinge, default is 1 
+      dPrecision    double, precision, default is 10^-8
+      iSeedCV       integer, random seed for CV
+    
+    Out:
+      RMSE error plot for lambda grid 
+      
+    Return:
+      dLambdaOpt    double, optimal lambda value according to one-standard deviation rule, that is
+                    we take the smallest value of lambda for which the difference between the corresponding
+                    RMSE and the minimal RMSE is weakly smaller than one standard devation 
+    "
+
+  
+  mRMSE <- CV_RMSE(iFold=iFold, vV0=vV0, mX=mX, vY=vY, sHinge=sHinge, vLambda=vLambda, dK=dK, dPrecision = dPrecision, iSeedCV=iSeedCV)
+  mCVFig <- cbind(vLambda, mRMSE)
+  dLambdaMin <-  mCVFig[mCVFig[,2]==min(mCVFig[,2])][1] # RMSE minimising lambda on grid 
+  dLambdaOpt<-  min(mCVFig[(mCVFig[,2]-mCVFig[,3] < mCVFig[mCVFig[,1]==dLambdaMin][2]),1]) # standard deviation rule
+  
+  cat('Optimal value', sprintf(": %i", iFold),'-fold CV: ' , 'Lambda', sprintf(": %.4f.", dLambdaOpt), "\n", sep="")
+  
+  # Generate figure with error bars
+  dfDataFig <- as.data.frame(mCVFig)
+  colnames(dfDataFig)= c('Lambda', 'RMSE', 'sd')
+  setwd(paste(dirname(getActiveDocumentContext()$path ),'/Figures', sep=''))
+  tikz(file=paste(paste("CVLambda_", sHinge, sep=''), dK, sep=''), width=6, height=5)
+  pPlot <- ggplot(dfDataFig, aes_string(x='Lambda', y='RMSE'), colour=variable, group=variable) + 
+    geom_errorbar(aes(ymin=RMSE-sd, ymax=RMSE+sd), width=.2, position=position_dodge(0.05), colour= 'red') +
+    geom_line() + geom_point() + theme_classic() + scale_x_log10()  
+  print(pPlot)
+  dev.off()
+  return(dLambdaOpt)
+}
+
+ResultsRow <- function(mX=mX, vY=vY, dLambda=NA, vPredict){
+  "
+    Purpose:
+      Displat all the diagnostics of the Classification through Linear Support 
+      Vector machine via iterative minimisation procedure detailed in Groenen 
+      et al. (2008)  
+      
+    Inputs:
+      vV            vector, optimal parameter vector
+      mX            matrix, predictor variables
+      vY            vector, dependent variable
+      vOptLambda    vector, optimal lambda per procedure
+      vK            vector, meta parameter Huber hinge, unused in some of the 
+                    procedures
+      dPrecision    double, precision, default is 10^-8
+      
+    Return:
+      results       vector, including all the resulting diagnostics
+    "
+  
+  # Confusion matrix
+  dTN <- sum(as.numeric(vY == -1) * (vPredict < 0))  # Type I Error (= 1 - )
+  dFP <- sum(as.numeric(vY == -1) * (vPredict > 0))  
+  dFN <- sum(as.numeric(vY == 1) * (vPredict < 0))  
+  dTP <- sum(as.numeric(vY == 1) * (vPredict > 0)) 
+  # SVM diagnostics
+  dSpecifity <- 1 - dFP / (dTN + dFP)     # (Type I Error is 1 - Specifity)
+  dRecall <- dTP / (dFN + dTP)            # (= 1 - Type II Error / power)
+  dPrec <- dTP / (dFP + dTP)         # (= 1 - false discovery proportion)
+  dHitRate <- (dTP + dTN) / iSubset       # (= 1 - misclassification rate)
+  dF1 <- 2 * dPrec * dRecall / (dPrec + dRecall)
+  # Store results
+  #mResults[4*i-3,] = (rbind(vOptLambda[4*i-3], dSpecifity, dRecall, dPrecision, dHitRate, dF1))
+  return(cbind(dLambda, dSpecifity, dRecall, dPrec, dHitRate, dF1))
+}
+
+# Main
+iSeed <- 4321 
+iSubset <- 1000 # size subset
+iN <- 800
+dPrecision=10^(-8)
+iFold <- 10
+dK <- 1
+dLambda <- 1
+vLambda <- 10^(seq(-5, 8, 0.1)) 
+iSeedCV <- 1234
+iCores <- detectCores()[1]
+
+10^(seq(-5, 8, 0.5)) 
+
+
+# Read data
+lExclude= list('duration')
+dfDataFull <- read.csv("bank-additional.csv", header=TRUE, sep=';')
+dfDataFull <- dfDataFull[, -which(names(dfDataFull) %in% lExclude)]
+set.seed(iSeed); dfData <- dfDataFull[sample(nrow(dfDataFull), iSubset), ]
+vYF <- dfData$y
+vYF[vYF=="yes"] <- 1; vYF[vYF=="no"] <- -1
+mXTildeF <- model.matrix(y ~ ., data=dfData)
+mXF <- cbind(matrix(1, nrow=nrow(mXTildeF), ncol=1), scale(mXTildeF[,2:ncol(mXTildeF)]))
+mX <- mXF[1: iN,]; mXTest <- mXF[-(1:iN),]
+vY <- vYF[1: iN]; vYTest <- vYF[-(1:iN)]
+vV0 <- runif(ncol(mX), min=-1, max=1)  
+
+tic()
+# Results package (Linear)
+ResultPackage.Linear.Absolute <- svmmajcrossval(X=mX, y=vY, lambda=vLambda, scale="zscore", hinge ='absolute',
+                                              hinge.delta = dK, eps=dPrecision, mc.cores=iCores, ngroup=iFold)
+ResultPackage.Linear.Quadratic <- svmmajcrossval(X=mX, y=vY, lambda=vLambda, scale="zscore", hinge='quadratic',
+                                              hinge.delta = dK, eps=dPrecision, mc.cores=iCores, ngroup=iFold)
+ResultPackage.Linear.Huber05 <- svmmajcrossval(X=mX, y=vY, lambda=vLambda, scale="zscore", hinge ='huber',
+                                              hinge.delta= 0.5, eps=dPrecision, mc.cores=iCores, ngroup=iFold)
+ResultPackage.Linear.Huber1 <- svmmajcrossval(X=mX, y=vY, lambda=vLambda, scale="zscore", hinge ='huber',
+                                              hinge.delta= 1, eps=dPrecision, mc.cores=iCores, ngroup=iFold)
+ResultPackage.Linear.Huber5 <- svmmajcrossval(X=mX, y=vY, lambda=vLambda, scale="zscore", hinge ='huber',
+                                              hinge.delta= 5, eps=dPrecision, mc.cores=iCores, ngroup=iFold)
+lLambdaPackage <- list('Linear'=ResultPackage.Linear.Absolute[["param.opt"]][["lambda"]],
+               'Quadratic'= ResultPackage.Linear.Quadratic[["param.opt"]][["lambda"]],
+               'Huber05'= ResultPackage.Linear.Huber05[["param.opt"]][["lambda"]],
+               'Huber1'= ResultPackage.Linear.Huber1[["param.opt"]][["lambda"]],
+               'Huber5'= ResultPackage.Linear.Huber5[["param.opt"]][["lambda"]])
+
+ResultBetaPackage.Linear.Absolute <- svmmaj(X=mX, y=vY, lambda=lLambdaPackage$Linear, scale="zscore", hinge ='absolute',
+                                                hinge.delta = dK, eps=dPrecision, mc.cores=iCores, ngroup=iFold)$beta
+ResultBetaPackage.Linear.Quadratic <- svmmaj(X=mX, y=vY, lambda=lLambdaPackage$Quadratic, scale="zscore", hinge='quadratic',
+                                                    hinge.delta = dK, eps=dPrecision, mc.cores=iCores, ngroup=iFold)$beta
+ResultBetaPackage.Linear.Huber05 <- svmmaj(X=mX, y=vY, lambda=lLambdaPackage$Huber05, scale="zscore", hinge ='huber',
+                                                    hinge.delta= 0.5, eps=dPrecision, mc.cores=iCores, ngroup=iFold)$beta
+ResultBetaPackage.Linear.Huber1 <- svmmaj(X=mX, y=vY, lambda=lLambdaPackage$Huber1, scale="zscore", hinge ='huber',
+                                                    hinge.delta= 1, eps=dPrecision, mc.cores=iCores, ngroup=iFold)$beta
+ResultBetaPackage.Linear.Huber5 <- svmmaj(X=mX, y=vY, lambda=lLambdaPackage$Huber5, scale="zscore", hinge ='huber',
+                                                    hinge.delta= 5, eps=dPrecision, mc.cores=iCores, ngroup=iFold)$beta
+
+# Results package (Polynomial)
+ResultPackage.Polynomial.Absolute <- svmmajcrossval(X=mX, y=vY, lambda=vLambda, scale="zscore", hinge ='absolute',
+                                                hinge.delta = dK, kernel = polydot, eps=dPrecision, mc.cores=iCores, ngroup=iFold)
+ResultPackage.Polynomial.Quadratic <- svmmajcrossval(X=mX, y=vY, lambda=vLambda, scale="zscore", hinge='quadratic',
+                                                 hinge.delta = dK, kernel = polydot, eps=dPrecision, mc.cores=iCores, ngroup=iFold)
+ResultPackage.Polynomial.Huber05 <- svmmajcrossval(X=mX, y=vY, lambda=vLambda, scale="zscore", hinge ='huber',
+                                               hinge.delta= 0.5, kernel = polydot, eps=dPrecision, mc.cores=iCores, ngroup=iFold)
+ResultPackage.Polynomial.Huber1 <- svmmajcrossval(X=mX, y=vY, lambda=vLambda, scale="zscore", hinge ='huber',
+                                              hinge.delta= 1, kernel = polydot, eps=dPrecision, mc.cores=iCores, ngroup=iFold)
+ResultPackage.Polynomial.Huber5 <- svmmajcrossval(X=mX, y=vY, lambda=vLambda, scale="zscore", hinge ='huber',
+                                              hinge.delta= 5, kernel = polydot, eps=dPrecision, mc.cores=iCores, ngroup=iFold)
+
+lLambdaPackagePolynomial <- list('Linear'=ResultPackage.Polynomial.Absolute[["param.opt"]][["lambda"]],
+                       'Quadratic'= ResultPackage.Polynomial.Quadratic[["param.opt"]][["lambda"]],
+                       'Huber05'= ResultPackage.Polynomial.Huber05[["param.opt"]][["lambda"]],
+                       'Huber1'= ResultPackage.Polynomial.Huber1[["param.opt"]][["lambda"]],
+                       'Huber5'= ResultPackage.Polynomial.Huber5[["param.opt"]][["lambda"]])
+
+ResultBetaPackage.Polynomial.Absolute <- svmmaj(X=mX, y=vY, lambda=lLambdaPackagePolynomial$Linear, scale="zscore", hinge ='absolute',
+                                            hinge.delta = dK, kernel = polydot, eps=dPrecision, mc.cores=iCores, ngroup=iFold)$beta
+ResultBetaPackage.Polynomial.Quadratic <- svmmaj(X=mX, y=vY, lambda=10e15, scale="zscore", hinge='quadratic',
+                                             hinge.delta = dK, kernel = polydot, eps=dPrecision, mc.cores=iCores, ngroup=iFold)
+ResultBetaPackage.Polynomial.Quadratic
+
+
+
+
+ResultBetaPackage.Polynomial.Huber05 <- svmmaj(X=mX, y=vY, lambda=lLambdaPackagePolynomial$Huber05, scale="zscore", hinge ='huber',
+                                           hinge.delta= 0.5, kernel = polydot, eps=dPrecision, mc.cores=iCores, ngroup=iFold)$beta
+ResultBetaPackage.Polynomial.Huber1 <- svmmaj(X=mX, y=vY, lambda=lLambdaPackagePolynomial$Huber1, scale="zscore", hinge ='huber',
+                                          hinge.delta= 1, kernel = polydot, eps=dPrecision, mc.cores=iCores, ngroup=iFold)$beta
+ResultBetaPackage.Polynomial.Huber5 <- svmmaj(X=mX, y=vY, lambda=lLambdaPackagePolynomial$Huber5, scale="zscore", hinge ='huber',
+                                          hinge.delta= 5, kernel = polydot, eps=dPrecision, mc.cores=iCores, ngroup=iFold)$beta
+
+# Results package (RBF)
+ResultPackage.RBF.Absolute <- svmmajcrossval(X=mX, y=vY, lambda=vLambda, scale="zscore", hinge ='absolute',
+                                                    hinge.delta = dK, kernel = rbfdot, eps=dPrecision, mc.cores=iCores, ngroup=iFold)
+ResultPackage.RBF.Quadratic <- svmmajcrossval(X=mX, y=vY, lambda=vLambda, scale="zscore", hinge='quadratic',
+                                                     hinge.delta = dK, kernel = rbfdot, eps=dPrecision, mc.cores=iCores, ngroup=iFold)
+ResultPackage.RBF.Huber05 <- svmmajcrossval(X=mX, y=vY, lambda=vLambda, scale="zscore", hinge ='huber',
+                                                   hinge.delta= 0.5, kernel = rbfdot, eps=dPrecision, mc.cores=iCores, ngroup=iFold)
+#ResultPackage.RBF.Huber1 <- svmmajcrossval(X=mX, y=vY, lambda=vLambda, scale="zscore", hinge ='huber',
+#                                                  hinge.delta= 1, kernel = rbfdot, eps=dPrecision, mc.cores=iCores, ngroup=iFold)
+#ResultPackage.RBF.Huber5 <- svmmajcrossval(X=mX, y=vY, lambda=vLambda, scale="zscore", hinge ='huber',
+#                                                  hinge.delta= 5, kernel = rbfdot, eps=dPrecision, mc.cores=iCores, ngroup=iFold)
+
+lLambdaPackageRBF <- list('Linear'=ResultPackage.Polynomial.Absolute[["param.opt"]][["lambda"]],
+                                 'Quadratic'= ResultPackage.Polynomial.Quadratic[["param.opt"]][["lambda"]],
+                                 'Huber05'= ResultPackage.Polynomial.Huber05[["param.opt"]][["lambda"]],
+                                 'Huber1'= ResultPackage.Polynomial.Huber1[["param.opt"]][["lambda"]],
+                                 'Huber5'= ResultPackage.Polynomial.Huber5[["param.opt"]][["lambda"]])
+
+ResultBetaPackage.RBF.Absolute <- svmmaj(X=mX, y=vY, lambda=lLambdaPackageRBF$Linear, scale="zscore", hinge ='absolute',
+                                                hinge.delta = dK, kernel = rbfdot, eps=dPrecision, mc.cores=iCores, ngroup=iFold)$beta
+ResultBetaPackage.RBF.Quadratic <- svmmaj(X=mX, y=vY, lambda=lLambdaPackageRBF$Quadratic, scale="zscore", hinge='quadratic',
+                                                 hinge.delta = dK, kernel = rbfdot, eps=dPrecision, mc.cores=iCores, ngroup=iFold)$beta
+#ResultBetaPackage.RBF.Huber05 <- svmmaj(X=mX, y=vY, lambda=lLambdaPackageRBF$Huber05, scale="zscore", hinge ='huber',
+#                                               hinge.delta= 0.5, kernel = rbfdot, eps=dPrecision, mc.cores=iCores, ngroup=iFold)$beta
+#ResultBetaPackage.RBF.Huber1 <- svmmaj(X=mX, y=vY, lambda=lLambdaPackageRBF$Huber1, scale="zscore", hinge ='huber',
+#                                              hinge.delta= 1, kernel = rbfdot, eps=dPrecision, mc.cores=iCores, ngroup=iFold)$beta
+#ResultBetaPackage.RBF.Huber5 <- svmmaj(X=mX, y=vY, lambda=lLambdaPackageRBF$Huber5, scale="zscore", hinge ='huber',
+#                                              hinge.delta= 5, kernel = rbfdot, eps=dPrecision, mc.cores=iCores, ngroup=iFold)$beta
+
+# Custom function
+dLambdaCV.Absolute <- CV_Figure(iFold=iFold, vV0=vV0, mX=mX, vY=vY, sHinge='absolute', 
+                              vLambda=vLambda, dK=1, dPrecision = dPrecision, iSeedCV=iSeedCV)
+dLambdaCV.Quadratic <- CV_Figure(iFold=iFold, vV0=vV0, mX=mX, vY=vY, sHinge='quadratic', 
+                              vLambda=vLambda, dK=1, dPrecision = dPrecision, iSeedCV=iSeedCV)
+dLambdaCV.Huber05 <- CV_Figure(iFold=iFold, vV0=vV0, mX=mX, vY=vY, sHinge='huber',
+                              vLambda=vLambda, dK=0.5, dPrecision = dPrecision, iSeedCV=iSeedCV)
+dLambdaCV.Huber1 <- CV_Figure(iFold=iFold, vV0=vV0, mX=mX, vY=vY, sHinge='huber',
+                             vLambda=vLambda, dK=1, dPrecision = dPrecision, iSeedCV=iSeedCV)
+dLambdaCV.Huber5<- CV_Figure(iFold=iFold, vV0=vV0, mX=mX, vY=vY, sHinge='huber',
+                              vLambda=vLambda, dK=5, dPrecision = dPrecision, iSeedCV=iSeedCV)
+lLambdaCustom <- list('Absolute'= dLambdaCV.Absolute, 'Quadratic'= dLambdaCV.Quadratic, 'Huber05'= dLambdaCV.Huber05,
+                             'Huber1'= dLambdaCV.Huber1, 'Huber5'= dLambdaCV.Huber5 )
+
+ResultCustom.Linear.Absolute <- LinearSVD(vV0=vV0, mX=mX, vY=vY, sHinge= 'absolute', dLambda=dLambdaCV.Absolute , dK=1, dPrecision=dPrecision)  
+ResultCustom.Linear.Quadratic <- LinearSVD(vV0=vV0, mX=mX, vY=vY, sHinge= 'quadratic', dLambda=dLambdaCV.Quadratic , dK=1, dPrecision=dPrecision)  
+ResultCustom.Linear.Huber05 <- LinearSVD(vV0=vV0, mX=mX, vY=vY, sHinge= 'huber', dLambda=dLambdaCV.Huber05, dK=0.5, dPrecision=dPrecision)  
+ResultCustom.Linear.Huber1 <- LinearSVD(vV0=vV0, mX=mX, vY=vY, sHinge= 'huber', dLambda=dLambdaCV.Huber1, dK=1, dPrecision=dPrecision)  
+ResultCustom.Linear.Huber5 <- LinearSVD(vV0=vV0, mX=mX, vY=vY, sHinge= 'huber', dLambda=dLambdaCV.Huber5 , dK=5, dPrecision=dPrecision)  
+toc()
+
+mResults <- matrix(NA, nrow = 20, ncol = 6, dimnames = list(lOptLambda <- c('Absolute(custom)',
+                                                                            'Absolute(package)', 'Absolute(package-poly)', 'Absolute(package-rbf)','Quadratic(custom)',
+                                                                            'Quadratic(package)', 'Quadratic(package-poly)', 'Quadratic(package-rbf)', 'Huber05(custom)',
+                                                                            'Huber05(package)', 'Huber05(package-poly)', 'Huber05(package-rbf)', 'Huber1(custom)',
+                                                                            'Huber1(package)', 'Huber1(package-poly)', 'Huber1(package-rbf)', 'Huber5(custom)',
+                                                                            'Huber5(package)', 'Huber5(package-poly)', 'Huber5(package-rbf)'), c('Optimal Lambda', 
+                                                                                                                                                 "dSpecifity","dRecall","dPrecision", "dHitRate", "dF1")))
+
+mResults[1,] <- ResultsRow(mX=mX, vY=vY, dLambda=lLambdaCustom$Absolute, vPredict = mX %*% ResultCustom.Linear.Absolute$Beta)
+mResults[2,] <- ResultsRow(mX=mX, vY=vY, dLambda=lLambdaPackage$Linear, vPredict = mX %*% ResultBetaPackage.Linear.Absolute)
+mResults[3,] <- ResultsRow(mX=mX, vY=vY, dLambda=lLambdaPackagePolynomial$Linear, vPredict = mX %*% ResultBetaPackage.Polynomial.Absolute)
+mResults[4,] <- ResultsRow(mX=mX, vY=vY, dLambda=lLambdaPackageRBF$Linear, vPredict = mX %*% ResultBetaPackage.RBF.Absolute)
+mResults[5,] <- ResultsRow(mX=mX, vY=vY, dLambda=lLambdaCustom$Quadratic, vPredict = mX %*% ResultCustom.Linear.Quadratic$Beta)
+mResults[6,] <- ResultsRow(mX=mX, vY=vY, dLambda=lLambdaPackage$Quadratic, vPredict = mX %*% ResultBetaPackage.Linear.Quadratic)
+mResults[7,] <- ResultsRow(mX=mX, vY=vY, dLambda=lLambdaPackagePolynomial$Quadratic, vPredict = mX %*% ResultBetaPackage.Polynomial.Quadratic)
+mResults[8,] <- ResultsRow(mX=mX, vY=vY, dLambda=lLambdaPackageRBF$Quadratic, vPredict = mX %*% ResultBetaPackage.RBF.Quadratic)
+mResults[9,] <- ResultsRow(mX=mX, vY=vY, dLambda=lLambdaCustom$Huber05, vPredict = mX %*% ResultCustom.Linear.Huber05$Beta)
+mResults[10,] <- ResultsRow(mX=mX, vY=vY, dLambda=lLambdaPackage$Huber05, vPredict = mX %*% ResultBetaPackage.Linear.Huber05)
+mResults[11,] <- ResultsRow(mX=mX, vY=vY, dLambda=lLambdaPackagePolynomial$Huber05, vPredict = mX %*% ResultBetaPackage.Polynomial.Huber05)
+mResults[12,] <- ResultsRow(mX=mX, vY=vY, dLambda=lLambdaPackageRBF$Huber05, vPredict = mX %*% ResultBetaPackage.RBF.Huber05)
+mResults[13,] <- ResultsRow(mX=mX, vY=vY, dLambda=lLambdaCustom$Huber1, vPredict = mX %*% ResultCustom.Linear.Huber1$Beta)
+mResults[14,] <- ResultsRow(mX=mX, vY=vY, dLambda=lLambdaPackage$Huber1, vPredict = mX %*% ResultBetaPackage.Linear.Huber1)
+mResults[15,] <- ResultsRow(mX=mX, vY=vY, dLambda=lLambdaPackagePolynomial$Huber1, vPredict = mX %*% ResultBetaPackage.Polynomial.Huber1)
+mResults[16,] <- ResultsRow(mX=mX, vY=vY, dLambda=lLambdaPackageRBF$Huber1, vPredict = mX %*% ResultBetaPackage.RBF.Huber1)
+mResults[17,] <- ResultsRow(mX=mX, vY=vY, dLambda=lLambdaCustom$Huber5,  vPredict = mX %*% ResultCustom.Linear.Huber5$Beta)
+mResults[18,] <- ResultsRow(mX=mX, vY=vY, dLambda=lLambdaPackage$Huber5, vPredict = mX %*% ResultBetaPackage.Linear.Huber5)
+mResults[19,] <- ResultsRow(mX=mX, vY=vY, dLambda=lLambdaPackagePolynomial$Huber5, vPredict = mX %*% ResultBetaPackage.Polynomial.Huber5)
+mResults[20,] <- ResultsRow(mX=mX, vY=vY, dLambda=lLambdaPackageRBF$Huber5, vPredict = mX %*% ResultBetaPackage.RBF.Huber5)
+time <- as.POSIXlt(Sys.time(), "UTC", "%H:%M:%S")
+mResults
+save(mResults, file = paste("mResults",time,".Rdata"))
+xtable(mResults, caption = 'In-sample diagnostics', label = 'tab:insamplediag', digits = 3)
