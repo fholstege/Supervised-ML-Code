@@ -1,0 +1,25 @@
+{
+    "id": "1C9A1FA9",
+    "path": "~/GitHub/Supervised ML Code/Trees/RegressionTree.R",
+    "project_path": "Trees/RegressionTree.R",
+    "type": "r_source",
+    "hash": "2657074529",
+    "contents": "",
+    "dirty": false,
+    "created": 1606598903956.0,
+    "source_on_save": false,
+    "relative_order": 2,
+    "properties": {
+        "tempName": "Untitled1",
+        "cursorPosition": "113,9",
+        "scrollLine": "83"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1606603258,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1606603258653,
+    "read_only": false,
+    "read_only_alternatives": []
+}

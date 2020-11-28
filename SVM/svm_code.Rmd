@@ -1,3 +1,13 @@
+---
+title: "Code"
+output:
+  pdf_document: default
+  pdf: default
+---
+
+
+
+```{r , echo=FALSE, warning=FALSE, error=FALSE, eval=FALSE}
 
 # Packes required for subsequent analysis. P_load ensures these will be installed and loaded. 
 if (!require("pacman")) install.packages("pacman")
@@ -13,8 +23,7 @@ pacman::p_load(fastDummies,
                kernlab,
                plot3D,
                stargazer, 
-               rdetools, 
-               tictoc)
+               rdetools)
 
 #######################################################################################
 # Functions to compute the SVM and it cross validation 
@@ -58,9 +67,16 @@ create_hinge_param <- function(mY, vQ, vZ, hinge = "absolute", epsilon = 1e-08, 
             (vQ >= 1) * (a * vQ) + 
             (vQ > -k_huber & vQ < 1) * (a))
     
+    c <- (mY == -1) * ((vQ <= -1) * (a * vQ^2) + 
+            (vQ >= k_huber) * (1 - (k_huber + 1)/2 + a * vQ^2) + # if the Y == -1
+            (vQ > -1 & vQ < k_huber) * (a)) +
+         (mY == 1) * ((vQ <= -k_huber) * (1 - (k_huber + 1)/2  + a * vQ^2) + # if the Y == 1
+            (vQ >= 1) * (a * vQ^2) + 
+            (vQ > -k_huber & vQ < 1) * (a))
     
     return(list(a = a, 
-                b = b))
+                b = b, 
+                c = c))
   }
 }
 
@@ -109,13 +125,13 @@ svm_mm <- function(mY, mX, hinge = "absolute", lambda = 10, epsilon = 1e-08, k_h
   n = nrow(mX)
   p = ncol(mX)
   
-  # set initial values; k, stepscore 
-  k = 1
-  stepscore = 0 
-  
   # define matrix p
   P = diag(p)
   P[1,1]<-0
+  
+  # set initial values; k, stepscore 
+  k = 1
+  stepscore = 0 
   
   if(hinge == "quadratic"){
     mZ = inv(t(mX) %*% mX + lambda * P) %*% t(mX)
@@ -137,7 +153,6 @@ svm_mm <- function(mY, mX, hinge = "absolute", lambda = 10, epsilon = 1e-08, k_h
     # all hinges need a b, so can define here
     b = lHinge_param_current$b
 
-    tic("Update the weights")
     # quick update if quadratic
     if(hinge == "quadratic"){
       
@@ -194,9 +209,11 @@ svm_mm <- function(mY, mX, hinge = "absolute", lambda = 10, epsilon = 1e-08, k_h
   }
 
   # get predicted category
-  mY_hat = sign(vNew_q)
+  mY_hat = sign(mNew_q)
   
-  # gather confusion matrix
+  
+  
+  # gather results 
   mConfusionTable <- table(mY, mY_hat)
   
   # create confusion matrix and calculate accuracy
@@ -209,7 +226,7 @@ svm_mm <- function(mY, mX, hinge = "absolute", lambda = 10, epsilon = 1e-08, k_h
                   mY = mY,
                   mX = mX, 
                   loss = fCurrent_loss,
-                  q = vNew_q,
+                  q = mNew_q,
                   yhat = mY_hat,
                   Accuracy = fAccuracy,
                   ConfusionTable = mConfusionTable,
@@ -239,11 +256,31 @@ svm_mm_cv <- function(mX, mY, lambda, folds, hinge = "absolute", k_huber = NA, e
     mX_test <- mX[vTest_id,]
     
     
-    # get result of the svm
-    lResult = svm_mm(mY = mY_train, mX = mX_train, hinge = hinge, lambda = lambda, epsilon = epsilon, k_huber = k_huber )
+    # if svmmaj bool selected, then implement with one of the kernels kernel selected
+    # get result from training set
+    if(svmmaj_bool & kernel_type == "linear"){
+      
+      lResult <- svmmaj(y = mY_train, X = mX_train, hinge = hinge, lambda = lambda, scale = "none", kernel = vanilladot)
+      vQ_test <- mX_test %*% lResult$beta
+      
+      # if chosen, implement rbf kernel 
+    }else if(svmmaj_bool & kernel_type == "rbf"){
+      
+      lResult <- svmmaj(y = mY_train, X = mX_train, hinge = hinge, lambda = lambda, scale = "none", kernel = rbfdot, kernel.sigma = sigma)
+      
+      
+      #if chosen, implement polynomial kernel
+    } else if(svmmaj_bool & kernel_type == "polynom"){
+      
+      lResult <- svmmaj(y = mY_train, X = mX_train, hinge = hinge, lambda = lambda, scale = "none", kernel = polydot, kernel.degree = degree)
+      vQ_test <- mX_test %*% lResult$beta
     
-    # calc the q out of sample  
-    vQ_test <- mX_test %*%  lResult$v
+    } # if chosen, implement non-kernel version
+      else {
+      lResult = svm_mm(mY = mY_train, mX = mX_train, hinge = hinge, lambda = lambda, epsilon = epsilon, k_huber = k_huber )
+      vQ_test <- mX_test %*%  lResult$v
+      
+    }
     
     # calculate the predicted y for this fold
     mY_hat <- sign(vQ_test)
@@ -276,6 +313,7 @@ svm_mm_cv <- function(mX, mY, lambda, folds, hinge = "absolute", k_huber = NA, e
   
   return(lResult_cv)
   
+  
 }
 
 # search best combination of parameters with gridsearch
@@ -285,7 +323,6 @@ svm_mm_gridsearch <- function(mX, mY, lambda, hinge = "absolute", k, k_huber = N
   if (hinge == "huber"){
     
     mParamgrid = expand.grid(lambda, k_huber)
-    
   }else {
     
     mParamgrid = expand.grid(lambda)
@@ -302,7 +339,8 @@ svm_mm_gridsearch <- function(mX, mY, lambda, hinge = "absolute", k, k_huber = N
     # select parameters from the grid
     param <- mParamgrid[i,]
     
-    tic("Test set of parameters")
+    print(param[1,c(1,2)])
+    
     # test these with k-fold
     cv_result <- svm_mm_cv(mX = mX,mY= mY, lambda =param[1,1], k_huber = param[1,2],folds = folds, hinge = hinge, epsilon = epsilon, metric = metric, svmmaj_bool = svmmaj_bool, kernel_type = kernel_type, sigma = sigma, degree = degree)
 
@@ -441,7 +479,6 @@ create_dfCompare_cv <- function(svmmaj_cv_obj){
 
 # ensure that we can reproduce the code
 set.seed(333)
-tic("total")
 
 # load bank data
 bank <- read.csv("bank-additional.csv", sep = ";")
@@ -498,24 +535,21 @@ sample_y = mY_num[sample_id]
 # our implementation
 result_abs_compare = svm_mm(sample_y, sample_x, lambda = 0.5, hinge = "absolute")
 result_quad_compare = svm_mm(sample_y, sample_x, lambda = 0.5, hinge = "quadratic")
-toc()
 result_huber_compare = svm_mm(sample_y, sample_x, lambda = 0.5, hinge = "huber", k_huber = 3)
-toc()
 
+
+
+result$v
+result$loss
+result$ConfusionTable
+result$Accuracy
+result$ARI
 
 #svmmaj implementation
 result_svmmaj_abs_compare <- svmmaj(sample_x,sample_y, lambda = 0.5, scale = "none",hinge = "absolute")
 result_svmmaj_quad_compare <- svmmaj(sample_x,sample_y, lambda = 0.5, scale = "none",hinge = "quadratic")
 result_svmmaj_huber_compare  <- svmmaj(sample_x,sample_y, lambda = 0.5, scale = "none",hinge = "huber", k_huber = 3)
 
-
-result_abs_compare$ConfusionTable
-result_quad_compare$ConfusionTable
-result_huber_compare$ConfusionTable
-
-result_svmmaj_abs_compare$q
-result_svmmaj_huber_compare$q
-result_svmmaj_quad_compare$q
 
 
 ### section 3: compare cross validation results, and create cv plots
@@ -561,12 +595,14 @@ colnames(result_cv_quadratic) <- c("lambda", "ARI")
 colnames(result_cv_absolute) <- c("lambda", "ARI")
 colnames(result_cv_huber) <- c("lambda", "k_huber", "ARI")
 
-# get optimal parameters 
+
 optimal_lambda_quadratic <- round(result_cv_quadratic[which.max(result_cv_quadratic$ARI),]$lambda,1)
 optimal_lambda_absolute <- round(result_cv_absolute[which.max(result_cv_absolute$ARI),]$lambda,1)
 optimal_lambda_huber <- result_cv_huber[which.max(result_cv_huber$ARI),]$lambda
 optimal_k_huber <- result_cv_huber[which.max(result_cv_huber$ARI),]$k_huber
 
+
+cv_huber_ari <- result_cv_huber[result_cv_huber$k_huber == 1,]$ARI
 
 # create dataframe for plot that compares quadratic and absolute error
 df_cv_compare <- data.frame(lambda = result_cv_absolute$lambda, abs_ARI = result_cv_absolute$ARI, quad_ARI = result_cv_quadratic$ARI, huber_ARI = cv_huber_ari)
@@ -590,6 +626,8 @@ ggplot(data = df_cv_compare, aes(x = log(lambda), y = value, col = variable))+
 
 ### section 4: test the optimal parameters from cv on a train and test set
 
+set.seed(11)
+
 ## 75% of the sample size
 fTrain_size <- floor(0.75 * nrow(sample_x))
 
@@ -599,6 +637,7 @@ vTrain_id <- sample(nrow(sample_x), size = fTrain_size)
 # train and test split
 mX_train <- sample_x[vTrain_id, ]
 mX_test <- sample_x[-vTrain_id, ]
+
 mY_train <- sample_y[vTrain_id]
 mY_test <- sample_y[-vTrain_id]
 
@@ -614,10 +653,28 @@ vQ_test_quadratic <- mX_test %*% result_quadratic$v
 vQ_test_absolute <- mX_test %*% result_absolute$v
 vQ_test_huber <- mX_test %*% result_huber$v
 
-# get results per type 
+# 
 analysis_quadratic <- analyse_svm_result(mY_test, vQ_test_quadratic, plot_title = "Results for quadratic error" )
 analysis_absolute <- analyse_svm_result(mY_test, vQ_test_absolute, plot_title = "Results for the absolute error")
 analysis_huber <- analyse_svm_result(mY_test, vQ_test_huber, plot_title = "Results for the Huber error")
+
+# get results per type
+
+# first ARI
+analysis_quadratic$ARI
+analysis_absolute$ARI
+analysis_huber$ARI
+
+# second, confusion matrix
+analysis_quadratic$Table
+analysis_absolute$Table
+analysis_huber$Table
+
+# show plots
+analysis_quadratic$ComparePlot
+analysis_absolute$ComparePlot
+analysis_huber$ComparePlot
+
 
 ### section 5: get hyperparameters for the RBF and polynomial kernels 
 
@@ -673,19 +730,20 @@ optimal_k_huber_polynom <- df_Compare_polynom_huber_cv[which.max(df_Compare_poly
 
 ### section 6: test kernels on test set
 
+
 # RBF kernels
 result_quadratic_rbf <- svmmaj(y = mY_train,X= mX_train, lambda = optimal_lambda_quadratic_rbf, hinge = "quadratic", kernel = rbfdot, kernel.sigma = sigma_rbf)
 result_huber_rbf <- svmmaj(y = mY_train,X= mX_train, lambda = optimal_lambda_huber_rbf, degree = optimal_k_huber_rbf, hinge = "huber", kernel = rbfdot, )
 
 
-# get predicted values
 vQ_test_quadratic_rbf <-  predict(result_quadratic_rbf, X.new = mX_test, y = mY_test)[1:nrow(mX_test)]
 vQ_test_huber_rbf <- predict(result_huber_rbf, X.new = mX_test, y = mY_test)[1:nrow(mX_test)]
 
-# get results
 analysis_quadratic_rbf <- analyse_svm_result(mY_test, vQ_test_quadratic_rbf)
 analysis_huber_rbf <- analyse_svm_result(mY_test, vQ_test_huber_rbf)
 
+analysis_quadratic_rbf
+analysis_huber_rbf
 
 # Polynom
 result_quadratic_polynom <- svmmaj(y = mY_train,X= mX_train, lambda = optimal_lambda_quadratic_rbf, hinge = "quadratic", kernel = polydot, degree_polynom)
@@ -697,11 +755,16 @@ vQ_test_huber_polynom <- predict(result_huber_polynom, X.new = mX_test, y = mY_t
 analysis_quadratic_polynom <- analyse_svm_result(mY_test, vQ_test_quadratic_polynom)
 analysis_huber_polynom <- analyse_svm_result(mY_test, vQ_test_huber_polynom)
 
-### Section 7: miscellaneous plot
+analysis_quadratic_polynom
+analysis_huber_polynom
+
+
+### Section 7: miscellaneous plots
 vk_huber_show = c(0)
 df_show_plot <- create_show_df(vk_huber_show)
 
 df_show_plot_melted <- melt(df_show_plot, measure.vars = colnames(df_show_plot)[-1] )
+
 
 
 # plot for appendix to show differences in the errors
@@ -722,4 +785,7 @@ ggplot(data = df_show_plot_melted, aes(x = q, y = value, col = variable)) +
   theme(plot.title =element_text(size=20, face = "plain",hjust = 0.5),
         axis.title=element_text(size=15, face = "plain"))
 
+
+
+```
 
