@@ -67,7 +67,7 @@ RegressionTree <- function(formula, df, minObs, maxDepth) {
         # when not at the root node, select the subset based on the previous splits
         if (!is.na(tree_info[j, "Rule"])) {
           
-          # subset data according to the filter
+          # subset data according to the rule
           this_data <- subset(df, eval(parse(text = tree_info[j, "Rule"])))
 
           # get the design matrix
@@ -88,21 +88,21 @@ RegressionTree <- function(formula, df, minObs, maxDepth) {
         mn <- max(tree_info$Node_id)
         
         # paste rules for the upcoming split
-        tmp_filter <- c(paste(names(tmp_splitter), ">=", splitting[2,tmp_splitter]),paste(names(tmp_splitter), "<", splitting[2,tmp_splitter]))
+        tmp_rule <- c(paste(names(tmp_splitter), ">=", splitting[2,tmp_splitter]),paste(names(tmp_splitter), "<", splitting[2,tmp_splitter]))
         
         # Check if the splitting rule has already been invoked to prevent appying the same rule twice
-        split_here  <- !sapply(tmp_filter,
+        split_here  <- !sapply(tmp_rule,
                                FUN = function(x,y) any(grepl(x, x = y)),
                                y = tree_info$Rule)
         
         # If empty, add the splitting rules
         if (!is.na(tree_info[j, "Rule"])) {
-          tmp_filter  <- paste(tree_info[j, "Rule"], 
-                               tmp_filter, sep = " & ")
+          tmp_rule  <- paste(tree_info[j, "Rule"], 
+                               tmp_rule, sep = " & ")
         } 
         
         # get the number of observations in current node
-        tmp_nobs <- sapply(tmp_filter,
+        tmp_nobs <- sapply(tmp_rule,
                            FUN = function(i, x) {
                              nrow(subset(x = x, subset = eval(parse(text = i))))
                            },
@@ -118,7 +118,7 @@ RegressionTree <- function(formula, df, minObs, maxDepth) {
                                Variable =names(tmp_splitter),
                                Index = splitting[2,tmp_splitter],
                                Obs = tmp_nobs,
-                               Rule = tmp_filter,
+                               Rule = tmp_rule,
                                Status = rep("SPLIT", 2),
                                row.names = NULL)[split_here,]
         
@@ -165,6 +165,3 @@ RegressionTree <- function(formula, df, minObs, maxDepth) {
 
 test_tree <- RegressionTree(cigs ~  age + educ, df = Smoke, minObs = 10, maxDepth = 5)
 test_tree$tree
-
-k = 5
-k>10
