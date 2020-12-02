@@ -1,0 +1,32 @@
+{
+    "id": "276E0D4F",
+    "path": null,
+    "project_path": null,
+    "type": "r_dataframe",
+    "hash": "0",
+    "contents": "",
+    "dirty": false,
+    "created": 1606935786673.0,
+    "source_on_save": false,
+    "relative_order": 6,
+    "properties": {
+        "expression": "dfCrime_cleaned",
+        "caption": "dfCrime_cleaned",
+        "totalObservations": "1994",
+        "displayedObservations": "1994",
+        "variables": "102",
+        "cacheKey": "AA321C37",
+        "object": "dfCrime_cleaned",
+        "environment": "",
+        "contentUrl": "grid_resource/gridviewer.html?env=&obj=dfCrime_cleaned&cache_key=AA321C37&max_cols=50",
+        "preview": "0"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1883626206792,
+    "encoding": "",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1606935786673,
+    "read_only": false,
+    "read_only_alternatives": []
+}

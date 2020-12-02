@@ -1,0 +1,32 @@
+{
+    "id": "F8699813",
+    "path": null,
+    "project_path": null,
+    "type": "r_dataframe",
+    "hash": "0",
+    "contents": "",
+    "dirty": false,
+    "created": 1606932742069.0,
+    "source_on_save": false,
+    "relative_order": 4,
+    "properties": {
+        "expression": "dfVarnames",
+        "caption": "dfVarnames",
+        "totalObservations": 128,
+        "displayedObservations": 128,
+        "variables": 3,
+        "cacheKey": "6109D5F8",
+        "object": "dfVarnames",
+        "environment": "",
+        "contentUrl": "grid_resource/gridviewer.html?env=&obj=dfVarnames&cache_key=6109D5F8&max_cols=50",
+        "preview": 0
+    },
+    "folds": "",
+    "lastKnownWriteTime": 2318265438588531822,
+    "encoding": "",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1606932742069,
+    "read_only": false,
+    "read_only_alternatives": []
+}

@@ -1,0 +1,25 @@
+{
+    "id": "E0A990C3",
+    "path": "~/GitHub/Supervised ML Code/Predicting Crime/Models.R",
+    "project_path": "Models.R",
+    "type": "r_source",
+    "hash": "757667778",
+    "contents": "",
+    "dirty": false,
+    "created": 1606931786613.0,
+    "source_on_save": false,
+    "relative_order": 1,
+    "properties": {
+        "tempName": "Untitled1",
+        "cursorPosition": "48,0",
+        "scrollLine": "2"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1606939054,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1606939054207,
+    "read_only": false,
+    "read_only_alternatives": []
+}

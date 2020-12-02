@@ -1,9 +1,0 @@
-# Create output data.frame with splitting rules and observations
-# This dataframe also works to guide which next need to be taken
-tree_info <- data.frame(Node_id = 1,    # The id of the node 1,2...
-                        Variable = NA,  # The variable on which the split is performed
-                        Index = NA,     # The value of the variable on which the split is performed 
-                        Obs = nrow(df), # number of observations in a particular node
-                        Rule = NA,    # The rule which we use to separate at the node 
-                        TERMINAL = "SPLIT", 
-                        stringsAsFactors = FALSE)

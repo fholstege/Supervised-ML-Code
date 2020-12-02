@@ -1,0 +1,32 @@
+{
+    "id": "0878610D",
+    "path": null,
+    "project_path": null,
+    "type": "r_dataframe",
+    "hash": "0",
+    "contents": "",
+    "dirty": false,
+    "created": 1606933452973.0,
+    "source_on_save": false,
+    "relative_order": 5,
+    "properties": {
+        "expression": "dfCrime_unnormalized",
+        "caption": "dfCrime_unnormalized",
+        "totalObservations": 2215,
+        "displayedObservations": 2215,
+        "variables": 147,
+        "cacheKey": "DA6EEC6C",
+        "object": "dfCrime_unnormalized",
+        "environment": "",
+        "contentUrl": "grid_resource/gridviewer.html?env=&obj=dfCrime_unnormalized&cache_key=DA6EEC6C&max_cols=50",
+        "preview": 0
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1883686553128,
+    "encoding": "",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1606933452973,
+    "read_only": false,
+    "read_only_alternatives": []
+}
