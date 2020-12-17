@@ -1,0 +1,52 @@
+
+
+BoostLogit <- function(mX, vY, iN_classifiers){
+  
+  # define the sample size
+  iN = nrow(mX)
+  
+  # define the initial probabilities 
+  vP <- rep(0.5, iN)
+  
+  # define the probabilities as chosen by the ensemble
+  vEnsembleProbabilities = rep(0, iN)
+  
+  # update integer with each weak classifier added
+  iClassifier = 0
+  
+  # max value for z
+  iZmax = 3
+  
+  # Continue updating until as many weak classifiers as defined in iN_classifiers
+  while(iClassifier < iN_classifiers){
+    iClassifier = iClassifier+ 1
+    
+    # Get sample weights based on probabilities - define minimum value to prevent bugs
+    # Will weigh observations closer to 0.5 (e.g. uncertain ones) more
+    vWeights = pmax(vP * (1-vP),1e-24)
+    
+    # define the 'response' variable vZ
+    vZ = ifelse(vY == 1, 1/vP, ifelse(vY == 0, -1/(1-vP), (vY - vP)/vWeights))
+    
+    # define min and max of it
+    vZ <- pmin(vZ, iZmax)
+    vZ <- pmax(vZ, -iZmax)
+    
+    # get probabilites from a weak classifier
+    vWeakClassifierProbabilities <- lm(vZ ~ as.matrix(mX), weights = vWeights)
+    
+    # update the probabilities of the ensemble with this weak classifier
+    vEnsembleProbabilities = vEnsembleProbabilities +  (0.5 * (vWeakClassifierProbabilities$fitted.values - vEnsembleProbabilities))
+    
+    # update current probabilities for the next set of weights
+    vP <- exp(vEnsembleProbabilities)/(exp(vEnsembleProbabilities) + exp(-vEnsembleProbabilities))
+    
+  }
+  
+  resultObj = list(predicted_label = sign(vEnsembleProbabilities), 
+                   predicted_raw = vEnsembleProbabilities)
+  
+  
+  return(resultObj)
+  
+}

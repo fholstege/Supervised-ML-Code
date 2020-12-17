@@ -1,0 +1,25 @@
+{
+    "id": "39B731A0",
+    "path": "~/GitHub/Supervised ML Code/Predicting Crime/helperFunctions.R",
+    "project_path": "helperFunctions.R",
+    "type": "r_source",
+    "hash": "2700565181",
+    "contents": "",
+    "dirty": false,
+    "created": 1608208320396.0,
+    "source_on_save": false,
+    "relative_order": 3,
+    "properties": {
+        "tempName": "Untitled1",
+        "cursorPosition": "27,1",
+        "scrollLine": "0"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1608208326,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1608208326096,
+    "read_only": false,
+    "read_only_alternatives": []
+}
