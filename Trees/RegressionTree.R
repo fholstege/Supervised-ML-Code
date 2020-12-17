@@ -1,4 +1,6 @@
 
+
+
 # function to split continuous variables
 split_continuous <- function(x,y, metric, minObs){
   
@@ -187,7 +189,8 @@ RegressionTree <- function(formula, df, minObs, maxDepth) {
                           Rule = NA,     
                           Status = "SPLIT", 
                           stringsAsFactors = FALSE)
-
+  print(tree_info)
+  print("---")
   
   # keep splitting until there are only leafs left
   while(do_splits) {
@@ -265,6 +268,9 @@ RegressionTree <- function(formula, df, minObs, maxDepth) {
         # overwrite state of current node
         tree_info[j, "Status"] <- ifelse(all(!split_here), "LEAF", "PARENT")
         
+        print(tree_info)
+        print("---")
+        
         # bind everything
         tree_info <- rbind(tree_info, children)
         
@@ -298,6 +304,8 @@ RegressionTree <- function(formula, df, minObs, maxDepth) {
   # get the leafs to get fitted values
   leafs <- tree_info[tree_info$Status == "LEAF", ]
   fitted <- c()
+  
+  print(tree_info)
 
   for (i in seq_len(nrow(leafs))) {
     
@@ -321,9 +329,15 @@ RegressionTree <- function(formula, df, minObs, maxDepth) {
   return(list(tree = tree_info, fit = fitted, formula = formula, data = data))
 }
 
+getwd()
+setwd("trees")
+
+library(rpart)
+library(partykit)
+library(dplyr)
+
 # load data
 load("smoking.Rdata")
-
 
 # our tree
 Our_smoke_tree <- RegressionTree(intention_to_smoke ~  age + alcohol_per_month, df = smoking, minObs = 10, maxDepth = 5)
@@ -336,4 +350,20 @@ plot(as.party(Rpart_smoke_tree))
 
 # difference created by the fact that Rpart makes split at half points (59.5) instead of 60
 # it also uses ANOVA instead of SSE, likely to lead to small difference 
+
+test_df <- data.frame(row.names=1:3)
+list_names <- c("Floris", "Pieter", "Ramon")
+
+
+list_values <- c(c(1,2,3), c(2,3,4), c(3,4,5))
+
+
+for(i in seq(1,3,1)){
+  print(i)
+  
+  test_df <- cbind(test_df, list_values[i])
+}
+
+colnames(test_df) <- list_names
+
 

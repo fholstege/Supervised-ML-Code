@@ -1,0 +1,25 @@
+{
+    "id": "8BD86DCF",
+    "path": "~/GitHub/Supervised ML Code/Predicting Crime/LogitBoost.R",
+    "project_path": "LogitBoost.R",
+    "type": "r_source",
+    "hash": "0",
+    "contents": "",
+    "dirty": false,
+    "created": 1607857293152.0,
+    "source_on_save": false,
+    "relative_order": 6,
+    "properties": {
+        "tempName": "Untitled1",
+        "cursorPosition": "55,11",
+        "scrollLine": "45"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1608206039,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1608206039105,
+    "read_only": false,
+    "read_only_alternatives": []
+}

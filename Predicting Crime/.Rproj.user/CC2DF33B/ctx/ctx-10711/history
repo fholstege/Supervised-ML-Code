@@ -1,0 +1,512 @@
+readxl,
+nortest,
+dsmle,
+tidyverse,
+ggplot2,
+parallel,
+devtools)
+# add repository to make mclapply() run in parallel
+install_github('nathanvan/parallelsugar')
+library(parallelsugar)
+mclapply(folds, train_krr_fold, sKernel_type = "linear", lParam = lParam, mX = mX_scaled, vY = vY_logged, mc.cores = numCores)
+lapply(folds, train_krr_fold, sKernel_type = "linear", lParam = lParam, mX = mX_scaled, vY = vY_logged, mc.cores = numCores)
+lapply(folds, train_krr_fold, sKernel_type = "linear", lParam = lParam, mX = mX_scaled, vY = vY_logged) #mc.cores = numCores)
+nrow(mX_scaled)
+folds[[1]]
+folds[[]]
+folds[[1]]
+for(f in folds){
+print(f[1:5])
+}
+for(f in folds){
+print(f[1:5])
+}
+train_krr_fold <- function(lFold,vY, mX,sKernel_type, lParam){
+#Split the data according to the folds
+vTest_indexes = lFold
+vTrain_indexes = -lFold
+# define train and test set for y and x
+vY_train <- vY[vTrain_indexes]
+mX_train <- mX[vTrain_indexes,]
+vY_test <- vY[vTest_indexes]
+mX_test <- mX[vTest_indexes,]
+# run the kernel ridge regression for specified kernel and parameters on the fold
+lmResult <- krr(vY_train, mX_train, kernel.type = sKernel_type, lambda = lParam$lambda)
+vYhat_test <- predict(lmResult, mX_test)
+print(vYhat_test)
+}
+lapply(folds, train_krr_fold, sKernel_type = "linear", lParam = lParam, mX = mX_scaled, vY = vY_logged) #mc.cores = numCores)
+train_krr_fold <- function(lFold,vY, mX,sKernel_type, lParam){
+#Split the data according to the folds
+vTest_indexes = lFold
+vTrain_indexes = -lFold
+print(vTrain_indexes)
+print(mX[1:5,])
+# define train and test set for y and x
+vY_train <- vY[vTrain_indexes]
+mX_train <- mX[vTrain_indexes,]
+vY_test <- vY[vTest_indexes]
+mX_test <- mX[vTest_indexes,]
+# run the kernel ridge regression for specified kernel and parameters on the fold
+lmResult <- krr(vY_train, mX_train, kernel.type = sKernel_type, lambda = lParam$lambda)
+vYhat_test <- predict(lmResult, mX_test)
+print(vYhat_test)
+}
+lapply(folds, train_krr_fold, sKernel_type = "linear", lParam = lParam, mX = mX_scaled, vY = vY_logged) #mc.cores = numCores)
+train_krr_fold <- function(lFold,vY, mX,sKernel_type, lParam){
+#Split the data according to the folds
+vTest_indexes = lFold
+vTrain_indexes = -lFold
+print(dim(vTrain_indexes))
+print(mX[1:5,])
+# define train and test set for y and x
+vY_train <- vY[vTrain_indexes]
+mX_train <- mX[vTrain_indexes,]
+vY_test <- vY[vTest_indexes]
+mX_test <- mX[vTest_indexes,]
+# run the kernel ridge regression for specified kernel and parameters on the fold
+lmResult <- krr(vY_train, mX_train, kernel.type = sKernel_type, lambda = lParam$lambda)
+vYhat_test <- predict(lmResult, mX_test)
+print(vYhat_test)
+}
+lapply(folds, train_krr_fold, sKernel_type = "linear", lParam = lParam, mX = mX_scaled, vY = vY_logged) #mc.cores = numCores)
+train_krr_fold <- function(lFold,vY, mX,sKernel_type, lParam){
+#Split the data according to the folds
+vTest_indexes = lFold
+vTrain_indexes = -lFold
+print(len(vTrain_indexes))
+print(mX[1:5,])
+# define train and test set for y and x
+vY_train <- vY[vTrain_indexes]
+mX_train <- mX[vTrain_indexes,]
+vY_test <- vY[vTest_indexes]
+mX_test <- mX[vTest_indexes,]
+# run the kernel ridge regression for specified kernel and parameters on the fold
+lmResult <- krr(vY_train, mX_train, kernel.type = sKernel_type, lambda = lParam$lambda)
+vYhat_test <- predict(lmResult, mX_test)
+print(vYhat_test)
+}
+lapply(folds, train_krr_fold, sKernel_type = "linear", lParam = lParam, mX = mX_scaled, vY = vY_logged) #mc.cores = numCores)
+train_krr_fold <- function(lFold,vY, mX,sKernel_type, lParam){
+#Split the data according to the folds
+vTest_indexes = lFold
+vTrain_indexes = -lFold
+print(lengt(vTrain_indexes))
+print(mX[1:5,])
+# define train and test set for y and x
+vY_train <- vY[vTrain_indexes]
+mX_train <- mX[vTrain_indexes,]
+vY_test <- vY[vTest_indexes]
+mX_test <- mX[vTest_indexes,]
+# run the kernel ridge regression for specified kernel and parameters on the fold
+lmResult <- krr(vY_train, mX_train, kernel.type = sKernel_type, lambda = lParam$lambda)
+vYhat_test <- predict(lmResult, mX_test)
+print(vYhat_test)
+}
+lapply(folds, train_krr_fold, sKernel_type = "linear", lParam = lParam, mX = mX_scaled, vY = vY_logged) #mc.cores = numCores)
+train_krr_fold <- function(lFold,vY, mX,sKernel_type, lParam){
+#Split the data according to the folds
+vTest_indexes = lFold
+vTrain_indexes = -lFold
+print(length(vTrain_indexes))
+print(mX[1:5,])
+# define train and test set for y and x
+vY_train <- vY[vTrain_indexes]
+mX_train <- mX[vTrain_indexes,]
+vY_test <- vY[vTest_indexes]
+mX_test <- mX[vTest_indexes,]
+# run the kernel ridge regression for specified kernel and parameters on the fold
+lmResult <- krr(vY_train, mX_train, kernel.type = sKernel_type, lambda = lParam$lambda)
+vYhat_test <- predict(lmResult, mX_test)
+print(vYhat_test)
+}
+lapply(folds, train_krr_fold, sKernel_type = "linear", lParam = lParam, mX = mX_scaled, vY = vY_logged) #mc.cores = numCores)
+train_krr_fold <- function(iFold_index,vY, mX,sKernel_type, lParam){
+#Split the data according to the folds
+vTest_indexes = lFold[[iFold_index]]
+vTrain_indexes = -lFold[[iFold_index]]
+print(length(vTrain_indexes))
+print(mX[1:5,])
+# define train and test set for y and x
+vY_train <- vY[vTrain_indexes]
+mX_train <- mX[vTrain_indexes,]
+vY_test <- vY[vTest_indexes]
+mX_test <- mX[vTest_indexes,]
+# run the kernel ridge regression for specified kernel and parameters on the fold
+lmResult <- krr(vY_train, mX_train, kernel.type = sKernel_type, lambda = lParam$lambda)
+vYhat_test <- predict(lmResult, mX_test)
+print(vYhat_test)
+}
+train_krr_fold <- function(iFold_index, lFold,vY, mX,sKernel_type, lParam){
+#Split the data according to the folds
+vTest_indexes = lFold[[iFold_index]]
+vTrain_indexes = -lFold[[iFold_index]]
+print(length(vTrain_indexes))
+print(mX[1:5,])
+# define train and test set for y and x
+vY_train <- vY[vTrain_indexes]
+mX_train <- mX[vTrain_indexes,]
+vY_test <- vY[vTest_indexes]
+mX_test <- mX[vTest_indexes,]
+# run the kernel ridge regression for specified kernel and parameters on the fold
+lmResult <- krr(vY_train, mX_train, kernel.type = sKernel_type, lambda = lParam$lambda)
+vYhat_test <- predict(lmResult, mX_test)
+print(vYhat_test)
+}
+lapply(1:5, train_krr_fold, lFold = folds,sKernel_type = "linear", lParam = lParam, mX = mX_scaled, vY = vY_logged) #mc.cores = numCores)
+train_krr_fold <- function(iFold_index, lFold,vY, mX,sKernel_type, lParam){
+#Split the data according to the folds
+vTest_indexes = lFold[[iFold_index]]
+vTrain_indexes = -lFold[[iFold_index]]
+print(length(vTrain_indexes))
+print(mX[1:5,])
+# define train and test set for y and x
+vY_train <- vY[vTrain_indexes]
+mX_train <- mX[vTrain_indexes,]
+vY_test <- vY[vTest_indexes]
+mX_test <- mX[vTest_indexes,]
+# run the kernel ridge regression for specified kernel and parameters on the fold
+lmResult <- krr(vY_train, mX_train, kernel.type = sKernel_type, lambda = lParam$lambda)
+vYhat_test <- predict(lmResult, mX_test)
+print(vYhat_test)
+}
+train_krr_fold <- function(iFold_index, lFold,vY, mX,sKernel_type, lParam){
+#Split the data according to the folds
+vTest_indexes = lFold[[iFold_index]]
+vTrain_indexes = -lFold[[iFold_index]]
+print(vTrain_indexes)
+print(mX[1:5,])
+# define train and test set for y and x
+vY_train <- vY[vTrain_indexes]
+mX_train <- mX[vTrain_indexes,]
+vY_test <- vY[vTest_indexes]
+mX_test <- mX[vTest_indexes,]
+# run the kernel ridge regression for specified kernel and parameters on the fold
+lmResult <- krr(vY_train, mX_train, kernel.type = sKernel_type, lambda = lParam$lambda)
+vYhat_test <- predict(lmResult, mX_test)
+print(vYhat_test)
+}
+lapply(1:5, train_krr_fold, lFold = folds,sKernel_type = "linear", lParam = lParam, mX = mX_scaled, vY = vY_logged) #mc.cores = numCores)
+# Packes required for subsequent analysis. P_load ensures these will be installed and loaded.
+if (!require("pacman")) install.packages("pacman")
+pacman::p_load(fastDummies,
+readxl,
+nortest,
+dsmle,
+tidyverse,
+ggplot2,
+parallel,
+devtools)
+# add dsmle package
+install.packages("../KRR/dsmle_1.0-4.tar.gz", repos = NULL, type="source")
+# add repository to make mclapply() run in parallel
+install_github('nathanvan/parallelsugar')
+library(parallelsugar)
+# add following to ensure mclapply runs in parallel on windows
+source("http://www.stat.cmu.edu/~nmv/setup/mclapply.hack.R")
+# load in dataframe, add variable names
+dfCrime <- read.table("data/crime_unnormalized.txt", sep = ",")
+dfVarnames <- read_xlsx("data/Varnames_unnormalized.xlsx")
+colnames(dfCrime) <- dfVarnames$Variable
+# remove variables that we will not consider for the regression, such as the county number
+vRemoveVar <- c("communityname", "state", "countyCode","communityCode", "fold")
+dfCrime_removeIrrelevant <- dfCrime %>% select(-vRemoveVar)
+# remove the other potential dependent variables
+vIndex_OtherDependent <- c((ncol(dfCrime_removeIrrelevant) -  18):(ncol(dfCrime_removeIrrelevant)-2))
+dfCrime_removeDependent <- dfCrime_removeIrrelevant[,-vIndex_OtherDependent]
+# turn all to numeric
+dfCrime_num <- data.frame(apply(dfCrime_removeDependent, 2, as.numeric))
+# remove rows with na in dependent
+dfCrime_cleanDependent <- dfCrime_num[!is.na(dfCrime_num$ViolentCrimesPerPop),]
+dfCrime_clean <- dfCrime_cleanDependent[,colSums(is.na(dfCrime_cleanDependent)) == 0]
+# get the dependent and indepdent variables
+vY <- as.matrix((dfCrime_clean$ViolentCrimesPerPop))
+vY_logged <- log(1 + vY)
+mX <- as.matrix(dfCrime_clean %>% select(-ViolentCrimesPerPop))
+# scale the independent variables
+mX_scaled <- scale(mX)
+dim(mX_scaled)
+lapply(1:5, train_krr_fold, lFold = folds,sKernel_type = "linear", lParam = lParam, mX = mX_scaled, vY = vY_logged) #mc.cores = numCores)
+train_krr_fold <- function(iFold_index, lFold,vY, mX,sKernel_type, lParam){
+#Split the data according to the folds
+vTest_indexes = lFold[[iFold_index]]
+vTrain_indexes = -lFold[[iFold_index]]
+print(vTrain_indexes)
+print(mX[1:5,])
+# define train and test set for y and x
+vY_train <- vY[vTrain_indexes]
+mX_train <- mX[vTrain_indexes,]
+vY_test <- vY[vTest_indexes]
+mX_test <- mX[vTest_indexes,]
+# run the kernel ridge regression for specified kernel and parameters on the fold
+lmResult <- krr(vY_train, mX_train, kernel.type = sKernel_type, lambda = lParam$lambda)
+vYhat_test <- predict(lmResult, mX_test)
+print(vYhat_test)
+}
+lapply(1:5, train_krr_fold, lFold = folds,sKernel_type = "linear", lParam = lParam, mX = mX_scaled, vY = vY_logged) #mc.cores = numCores)
+folds = createFolds(mX_scaled, k = 5, list = TRUE, returnTrain = FALSE)
+numCores <- detectCores()
+lapply(1:5, train_krr_fold, lFold = folds,sKernel_type = "linear", lParam = lParam, mX = mX_scaled, vY = vY_logged) #mc.cores = numCores)
+train_krr_fold <- function(iFold_index, lFold,vY, mX,sKernel_type, lParam){
+#Split the data according to the folds
+vTest_indexes = lFold[[iFold_index]]
+vTrain_indexes = -lFold[[iFold_index]]
+print(vTest_indexes)
+print(length(vTest_indexes))
+# define train and test set for y and x
+vY_train <- vY[vTrain_indexes]
+mX_train <- mX[vTrain_indexes,]
+vY_test <- vY[vTest_indexes]
+mX_test <- mX[vTest_indexes,]
+# run the kernel ridge regression for specified kernel and parameters on the fold
+lmResult <- krr(vY_train, mX_train, kernel.type = sKernel_type, lambda = lParam$lambda)
+vYhat_test <- predict(lmResult, mX_test)
+print(vYhat_test)
+}
+lapply(1:5, train_krr_fold, lFold = folds,sKernel_type = "linear", lParam = lParam, mX = mX_scaled, vY = vY_logged) #mc.cores = numCores)
+folds[[1]]
+folds = createFolds(mX_scaled, k = 5, list = TRUE, returnTrain = FALSE)
+folds$Fold1
+length(folds$Fold1)
+folds = createFolds(dfCrime_clean, k = 5, list = TRUE, returnTrain = FALSE)
+length(folds$Fold1)
+folds$Fold1
+folds = createFolds(mX_scaled, k = 5, list = TRUE, returnTrain = FALSE)
+folds$Fold1
+folds = createFolds(vY_logged, k = 5, list = TRUE, returnTrain = FALSE)
+train_krr_fold <- function(iFold_index, lFold,vY, mX,sKernel_type, lParam){
+#Split the data according to the folds
+vTest_indexes = lFold[[iFold_index]]
+vTrain_indexes = -lFold[[iFold_index]]
+print(vTest_indexes)
+print(length(vTest_indexes))
+# define train and test set for y and x
+vY_train <- vY[vTrain_indexes]
+mX_train <- mX[vTrain_indexes,]
+vY_test <- vY[vTest_indexes]
+mX_test <- mX[vTest_indexes,]
+# run the kernel ridge regression for specified kernel and parameters on the fold
+lmResult <- krr(vY_train, mX_train, kernel.type = sKernel_type, lambda = lParam$lambda)
+vYhat_test <- predict(lmResult, mX_test)
+print(vYhat_test)
+}
+lParam <- list(lambda = 0.1)
+lapply(1:5, train_krr_fold, lFold = folds,sKernel_type = "linear", lParam = lParam, mX = mX_scaled, vY = vY_logged) #mc.cores = numCores)
+lParam <- list(lambda = 0.1)
+folds = createFolds(vY, k = 5, list = TRUE, returnTrain = FALSE)
+cv_krr <- function(sKernel_type, dfFolds, vY, mX, lParam){
+numCores <- detectCores()
+mclapply(1:ncol(dfFolds), train_krr_fold, lFold = folds,sKernel_type = "linear", lParam = lParam, mX = mX_scaled, vY = vY_logged, mc.cores = numCores)
+}
+cv_krr("linear", folds, vY_logged, mX_scaled, lParam)
+ncol(folds)
+dim(folds)
+folds = createFolds(vY, k = 5, list = TRUE, returnTrain = FALSE)
+length(folds)
+cv_krr <- function(sKernel_type, dfFolds, vY, mX, lParam){
+numCores <- detectCores()
+mclapply(1:length(dfFolds), train_krr_fold, lFold = folds,sKernel_type = "linear", lParam = lParam, mX = mX_scaled, vY = vY_logged, mc.cores = numCores)
+}
+cv_krr("linear", folds, vY_logged, mX_scaled, lParam)
+cv_krr <- function(sKernel_type, dfFolds, vY, mX, lParam){
+numCores <- detectCores()
+mclapply(1:length(dfFolds), train_krr_fold, lFold = folds,sKernel_type = "linear", lParam = lParam, mX = mX_scaled, vY = vY_logged, mc.cores = numCores)
+}
+cv_krr("linear", folds, vY_logged, mX_scaled, lParam)
+cv_krr
+cv.krr
+train_krr_fold <- function(iFold_index, lFold,vY, mX,sKernel_type, lParam){
+#Split the data according to the folds
+vTest_indexes = lFold[[iFold_index]]
+vTrain_indexes = -lFold[[iFold_index]]
+print(vTest_indexes)
+print(length(vTest_indexes))
+# define train and test set for y and x
+vY_train <- vY[vTrain_indexes]
+mX_train <- mX[vTrain_indexes,]
+vY_test <- vY[vTest_indexes]
+mX_test <- mX[vTest_indexes,]
+# run the kernel ridge regression for specified kernel and parameters on the fold
+lmResult <- krr(vY_train, mX_train, kernel.type = sKernel_type, lambda = lParam$lambda)
+vYhat_fold <- predict(lmResult, mX_test)
+mYhat[vTest_indexes,] <- vYhat_fold
+}
+cv_krr <- function(sKernel_type, dfFolds, vY, mX, lParam){
+numCores <- detectCores()
+mYhat <- matrix(NA, nrow = nrow(mX), ncol = 1)
+mclapply(1:length(dfFolds), train_krr_fold, lFold = folds,sKernel_type = "linear", lParam = lParam, mX = mX_scaled, vY = vY_logged, mc.cores = numCores)
+print(mYhat)
+}
+cv_krr("linear", folds, vY_logged, mX_scaled, lParam)
+cv_krr <- function(sKernel_type, dfFolds, vY, mX, lParam){
+numCores <- detectCores()
+mYhat <- matrix(NA, nrow = nrow(mX), ncol = 1)
+mclapply(1:length(dfFolds), train_krr_fold, lFold = folds,sKernel_type = "linear", lParam = lParam, mX = mX_scaled, vY = vY_logged, mc.cores = numCores, mYhat = mYhat)
+print(mYhat)
+}
+cv_krr("linear", folds, vY_logged, mX_scaled, lParam)
+cv_krr <- function(sKernel_type, dfFolds, vY, mX, lParam){
+numCores <- detectCores()
+mYhat <- matrix(NA, nrow = nrow(mX), ncol = 1)
+mclapply(1:length(dfFolds), train_krr_fold, lFold = folds,sKernel_type = "linear", lParam = lParam, mX = mX_scaled, vY = vY_logged, mc.cores = numCores, mYhat = mYhat)
+print(mYhat)
+}
+cv_krr("linear", folds, vY_logged, mX_scaled, lParam)
+train_krr_fold <- function(iFold_index, lFold,vY, mX,sKernel_type, lParam, mYhat){
+#Split the data according to the folds
+vTest_indexes = lFold[[iFold_index]]
+vTrain_indexes = -lFold[[iFold_index]]
+print(vTest_indexes)
+print(length(vTest_indexes))
+# define train and test set for y and x
+vY_train <- vY[vTrain_indexes]
+mX_train <- mX[vTrain_indexes,]
+vY_test <- vY[vTest_indexes]
+mX_test <- mX[vTest_indexes,]
+# run the kernel ridge regression for specified kernel and parameters on the fold
+lmResult <- krr(vY_train, mX_train, kernel.type = sKernel_type, lambda = lParam$lambda)
+vYhat_fold <- predict(lmResult, mX_test)
+print(vYhat_fold[1:5])
+mYhat[vTest_indexes,] <- vYhat_fold
+}
+cv_krr <- function(sKernel_type, dfFolds, vY, mX, lParam){
+numCores <- detectCores()
+mYhat <- matrix(NA, nrow = nrow(mX), ncol = 1)
+mclapply(1:length(dfFolds), train_krr_fold, lFold = folds,sKernel_type = "linear", lParam = lParam, mX = mX_scaled, vY = vY_logged, mc.cores = numCores, mYhat = mYhat)
+print(mYhat)
+}
+cv_krr("linear", folds, vY_logged, mX_scaled, lParam)
+train_krr_fold <- function(iFold_index, lFold,vY, mX,sKernel_type, lParam){
+#Split the data according to the folds
+vTest_indexes = lFold[[iFold_index]]
+vTrain_indexes = -lFold[[iFold_index]]
+print(vTest_indexes)
+print(length(vTest_indexes))
+# define train and test set for y and x
+vY_train <- vY[vTrain_indexes]
+mX_train <- mX[vTrain_indexes,]
+vY_test <- vY[vTest_indexes]
+mX_test <- mX[vTest_indexes,]
+# run the kernel ridge regression for specified kernel and parameters on the fold
+lmResult <- krr(vY_train, mX_train, kernel.type = sKernel_type, lambda = lParam$lambda)
+vYhat_fold <- predict(lmResult, mX_test)
+return(vYhat_fold)
+}
+cv_krr <- function(sKernel_type, dfFolds, vY, mX, lParam){
+numCores <- detectCores()
+result <- mclapply(1:length(dfFolds), train_krr_fold, lFold = folds,sKernel_type = "linear", lParam = lParam, mX = mX_scaled, vY = vY_logged, mc.cores = numCores)
+}
+cv_krr("linear", folds, vY_logged, mX_scaled, lParam)
+cv_krr <- function(sKernel_type, dfFolds, vY, mX, lParam){
+numCores <- detectCores()
+result <- mclapply(1:length(dfFolds), train_krr_fold, lFold = folds,sKernel_type = "linear", lParam = lParam, mX = mX_scaled, vY = vY_logged, mc.cores = numCores)
+print(result)
+}
+cv_krr("linear", folds, vY_logged, mX_scaled, lParam)
+r <- cv_krr("linear", folds, vY_logged, mX_scaled, lParam)
+r
+r[[1]]
+length(r[[1]])
+length(r[[2]])
+r[1,]
+r.index
+cv_krr <- function(sKernel_type, dfFolds, vY, mX, lParam){
+numCores <- detectCores()
+vYhat <- vector(mode="numeric", length=nrow(mX))
+mclapply(1:length(dfFolds), train_krr_fold, lFold = folds,sKernel_type = "linear", lParam = lParam, mX = mX_scaled, vY = vY_logged,vYhat = vYhat, mc.cores = numCores)
+return(vYhat)
+}
+cv_krr("linear", folds, vY_logged, mX_scaled, lParam = lParam)
+r <- cv_krr("linear", folds, vY_logged, mX_scaled, lParam = lParam)
+train_krr_fold <- function(iFold_index, lFold,vY, mX,sKernel_type, lParam, vYhat){
+#Split the data according to the folds
+vTest_indexes = lFold[[iFold_index]]
+vTrain_indexes = -lFold[[iFold_index]]
+print(vTest_indexes)
+print(length(vTest_indexes))
+# define train and test set for y and x
+vY_train <- vY[vTrain_indexes]
+mX_train <- mX[vTrain_indexes,]
+vY_test <- vY[vTest_indexes]
+mX_test <- mX[vTest_indexes,]
+# run the kernel ridge regression for specified kernel and parameters on the fold
+lmResult <- krr(vY_train, mX_train, kernel.type = sKernel_type, lambda = lParam$lambda)
+vYhat_fold <- predict(lmResult, mX_test)
+return(list(yhat = vYhat_fold, indexes = vTest_indexes))
+}
+cv_krr <- function(sKernel_type, dfFolds, vY, mX, lParam){
+numCores <- detectCores()
+vYhat <- vector(NA, length=nrow(mX))
+lResult_cv = mclapply(1:length(dfFolds), train_krr_fold, lFold = folds,sKernel_type = "linear", lParam = lParam, mX = mX_scaled, vY = vY_logged,vYhat = vYhat, mc.cores = numCores)
+return(lResult_cv)
+}
+r <- cv_krr("linear", folds, vY_logged, mX_scaled, lParam = lParam)
+train_krr_fold <- function(iFold_index, lFold,vY, mX,sKernel_type, lParam){
+#Split the data according to the folds
+vTest_indexes = lFold[[iFold_index]]
+vTrain_indexes = -lFold[[iFold_index]]
+print(vTest_indexes)
+print(length(vTest_indexes))
+# define train and test set for y and x
+vY_train <- vY[vTrain_indexes]
+mX_train <- mX[vTrain_indexes,]
+vY_test <- vY[vTest_indexes]
+mX_test <- mX[vTest_indexes,]
+# run the kernel ridge regression for specified kernel and parameters on the fold
+lmResult <- krr(vY_train, mX_train, kernel.type = sKernel_type, lambda = lParam$lambda)
+vYhat_fold <- predict(lmResult, mX_test)
+return(list(yhat = vYhat_fold, indexes = vTest_indexes))
+}
+cv_krr <- function(sKernel_type, dfFolds, vY, mX, lParam){
+numCores <- detectCores()
+vYhat <- vector(NA, length=nrow(mX))
+lResult_cv = mclapply(1:length(dfFolds), train_krr_fold, lFold = folds,sKernel_type = "linear", lParam = lParam, mX = mX_scaled, vY = vY_logged, mc.cores = numCores)
+return(lResult_cv)
+}
+r <- cv_krr("linear", folds, vY_logged, mX_scaled, lParam = lParam)
+cv_krr <- function(sKernel_type, dfFolds, vY, mX, lParam){
+numCores <- detectCores()
+vYhat <- vector(0, length=nrow(mX))
+lResult_cv = mclapply(1:length(dfFolds), train_krr_fold, lFold = folds,sKernel_type = "linear", lParam = lParam, mX = mX_scaled, vY = vY_logged, mc.cores = numCores)
+return(lResult_cv)
+}
+cv_krr <- function(sKernel_type, dfFolds, vY, mX, lParam){
+numCores <- detectCores()
+vYhat <- vector(mode = "numeric", length=nrow(mX))
+lResult_cv = mclapply(1:length(dfFolds), train_krr_fold, lFold = folds,sKernel_type = "linear", lParam = lParam, mX = mX_scaled, vY = vY_logged, mc.cores = numCores)
+return(lResult_cv)
+}
+cv_krr <- function(sKernel_type, dfFolds, vY, mX, lParam){
+numCores <- detectCores()
+lResult_cv = mclapply(1:length(dfFolds), train_krr_fold, lFold = folds,sKernel_type = "linear", lParam = lParam, mX = mX_scaled, vY = vY_logged, mc.cores = numCores)
+return(lResult_cv)
+}
+r <- cv_krr("linear", folds, vY_logged, mX_scaled, lParam = lParam)
+train_krr_fold <- function(iFold_index, lFold,vY, mX,sKernel_type, lParam){
+#Split the data according to the folds
+vTest_indexes = lFold[[iFold_index]]
+vTrain_indexes = -lFold[[iFold_index]]
+print(vTest_indexes)
+print(length(vTest_indexes))
+# define train and test set for y and x
+vY_train <- vY[vTrain_indexes]
+mX_train <- mX[vTrain_indexes,]
+vY_test <- vY[vTest_indexes]
+mX_test <- mX[vTest_indexes,]
+# run the kernel ridge regression for specified kernel and parameters on the fold
+lmResult <- krr(vY_train, mX_train, kernel.type = sKernel_type, lambda = lParam$lambda)
+vYhat_fold <- predict(lmResult, mX_test)
+return(data.frame(yhat = vYhat_fold, indexes = vTest_indexes))
+}
+cv_krr <- function(sKernel_type, dfFolds, vY, mX, lParam){
+numCores <- detectCores()
+lResult_cv = mclapply(1:length(dfFolds), train_krr_fold, lFold = folds,sKernel_type = "linear", lParam = lParam, mX = mX_scaled, vY = vY_logged, mc.cores = numCores)
+return(lResult_cv)
+}
+r <- cv_krr("linear", folds, vY_logged, mX_scaled, lParam = lParam)
+r
+lapply(r, rbind)
+t <- lapply(r, rbind)
+t
+t <- lapply(r, rbind, r)
+t
