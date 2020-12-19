@@ -1,0 +1,536 @@
+library(xgboost)
+library(readr)
+library(stringr)
+library(caret)
+library(car)
+library(dplyr)
+library(mltools)
+library(data.table)
+require(Matrix)
+library(githubinstall)
+library(devtools)
+library(SHAPforxgboost)
+library(pso)
+library(tidyr)
+# if (!require('vcd')) install.packages('vcd')
+
+## Import data files
+
+library(readr)
+
+Stedin_lag_tdcg <- read_csv("Stedin_lag_tdcg.csv")
+
+TenneT_lag_tdcg <- read_csv("TenneT_lag.csv")
+
+Enexis_lag_tdcg <- read_csv("Enexis_lag.csv")
+
+DNWG_lag_tdcg <- read_csv('DNWG_lag.csv')
+
+colnames(Stedin_lag_tdcg)
+colnames(TenneT_lag_tdcg)
+colnames(Enexis_lag_tdcg)
+colnames(DNWG_lag_tdcg)
+
+dim(Stedin_lag_tdcg)
+
+S <- Stedin_lag_tdcg[1:5500,]
+TT <- TenneT_lag_tdcg[1:2000,]
+E <- Enexis_lag_tdcg[1:3500,]
+D <- DNWG_lag_tdcg[1:900,]
+
+Data <- rbind(S,TT,E,D)
+dim(Data)
+
+# colnames(full_data[,240:260])
+
+full_data_backup <- full_data
+
+View(full_data)
+
+y_true <- full_data[split:NROW(full_data),]
+
+y <- y_true[ ,which(names(y_true) %in% c('UN','Leeftijd','H2','CH4','C2H6','C2H4','C2H2'))]
+
+# dim(y_true)
+
+## Keep only the lagged values and categorical variables
+
+## Moeten hier niet een aantaal variablen weg?
+
+# H2 out, tdcgkleur in
+
+one_hot_die_shit<-function(var_data){
+  a<-one_hot(data.table(factor(var_data$bedrijf)))
+  b<-one_hot(data.table(factor(var_data$OlieCode)))
+  c<-one_hot(data.table(factor(var_data$Merk)))
+  d<-one_hot(data.table(factor(var_data$Plaats)))
+  e<-one_hot(data.table(factor(var_data$OlieSoort)))
+  f<-one_hot(data.table(factor(var_data$Categorie)))
+  g<-one_hot(data.table(factor(var_data$bedrijfs_spanning_kV)))
+  h<-var_data[,13:NCOL(var_data)]
+  i<-one_hot(data.table(factor(var_data$olieNaam)))
+  t<-var_data$Leeftijd
+  out<-cbind(t,a,b,c,e,h,i)
+  return(out)
+}
+head(labels)
+
+data_parsing <- function(data_full){
+  ## Keep only transformators
+  # full_data<- subset(Stedin_lag_tdcg,apparaat_soort == 'tr')
+  full_data <- rbind(Stedin_lag_tdcg, TenneT_lag_tdcg,Enexis_lag_tdcg,DNWG_lag_tdcg)
+  # write.csv(full_data,'full_data_lag_diff.csv')
+  colnames(full_data)
+  dim(full_data) # 22503 --> +DNWG --> 24245
+  
+  ## Define differenced values
+  # First diff
+  full_data$H2_diff <- full_data$H2 - full_data$H2_lag
+  full_data$CH4_diff <- full_data$CH4 - full_data$CH4_lag
+  full_data$C2H2_diff <- full_data$C2H2 - full_data$C2H2_lag
+  full_data$C2H4_diff <- full_data$C2H4 - full_data$C2H4_lag
+  full_data$C2H6_diff <- full_data$C2H6 - full_data$C2H6_lag
+  full_data$CO_diff <- full_data$CO - full_data$CO_lag
+  full_data$CO2_diff <- full_data$CO2_kooldioxide_ul_p_l - full_data$CO2_lag
+  
+  # Second diff
+  full_data$H2_diff2 <- full_data$H2 - full_data$H2_lag2
+  full_data$CH4_diff2 <- full_data$CH4 - full_data$CH4_lag2
+  full_data$C2H2_diff2 <- full_data$C2H2 - full_data$C2H2_lag2
+  full_data$C2H4_diff2 <- full_data$C2H4 - full_data$C2H4_lag2
+  full_data$C2H6_diff2 <- full_data$C2H6 - full_data$C2H6_lag2
+  full_data$CO_diff2 <- full_data$CO - full_data$CO_lag2
+  full_data$CO2_diff2 <- full_data$CO2_kooldioxide_ul_p_l - full_data$CO2_lag2
+  
+  # Third diff
+  full_data$H2_diff3 <- full_data$H2 - full_data$H2_lag3
+  full_data$CH4_diff3 <- full_data$CH4 - full_data$CH4_lag3
+  full_data$C2H2_diff3 <- full_data$C2H2 - full_data$C2H2_lag3
+  full_data$C2H4_diff3 <- full_data$C2H4 - full_data$C2H4_lag3
+  full_data$C2H6_diff3 <- full_data$C2H6 - full_data$C2H6_lag3
+  full_data$CO_diff3 <- full_data$CO - full_data$CO_lag3
+  full_data$CO2_diff3 <- full_data$CO2_kooldioxide_ul_p_l - full_data$CO2_lag3
+  
+keep_from_full<-full_data[ , -which(names(full_data) %in% c("UN","X","H2","C2H6","X1",
+                                                            "C2H4","CH4","C2H2","CO",
+                                                            "Datum","apparaat_soort",
+                                                            "C3H8_propaan_ul_p_l","C3H6_propeen_ul_p_l",
+                                                            "CO2_kooldioxide_ul_p_l","O2_zuurstof_ul_p_l",
+                                                            "N2_stikstof_ul_p_l","grensvlakspanning_mN_p_m",
+                                                            "zuurgetal_g_KOH_p_kg","soorslagspanning_kV","tg_delta_x10_4",
+                                                            "specifieke_weerstand_G_Ohm_m","water_gementen_mg_p_kg",
+                                                            "H2T4","C2H6T4","CH4T4","CH4T5","C2H6T5","C2H4T5","CH4T1",
+                                                            "C2H4T1","C2H2T1","H2P1","CH4P1","C2H2P1","C2H4P1",
+                                                            "C2H6P1","T1","T4","T5","P1","P2","Cx","Cy","P90","P9095",
+                                                            "P9599","P99","Markerkleur","TDCG","Leeftijd_lag","Leeftijd_lag2",
+                                                            "Leeftijd_lag3","Leeftijd_lag4","H2_diff","CH4_diff","C2H2_diff","C2H4_diff","C2H6_diff","CO_diff","CO2_diff","H2_diff2","CH4_diff2",
+                                                            "C2H2_diff2","C2H4_diff2","C2H6_diff2","CO_diff2","CO2_diff2","H2_diff3","CH4_diff3","C2H2_diff3","C2H4_diff3",
+                                                            "C2H6_diff3","CO_diff3","CO2_diff3"))]
+
+## Transform categorical variables to numeric
+# Define dep variable
+labels<-as.matrix(as.factor(keep_from_full$TDCGkleur))
+labels<-as.factor(as.matrix(keep_from_full$TDCGkleur))
+typeof(labels)
+dim(labels)
+
+## The exogenous variables for XGboost 
+vars <-keep_from_full[ , -which(names(keep_from_full) %in% c("TDCGkleur"))]
+
+oh <-one_hot_die_shit(vars)
+
+
+colnames(oh)
+colnames(labels)
+
+## Create train/test data samples
+nn <- as.numeric(NCOL(labels))
+tt <- as.numeric(NROW(labels))
+
+split <- round(as.numeric(tt*.60),0)
+# dim(split)
+
+feats<-data.matrix(oh)
+# dim(feats)
+
+## Full sample
+train_l<-labels[1:split]
+test_l<-labels[(split+1):tt]
+train_f<-feats[1:split,]
+test_f<-feats[(split+1):tt,]
+
+## Make XGboost data matrix
+train_1 <- xgb.DMatrix(data = train_f, label = train_l)
+test_1 <- xgb.DMatrix(data = test_f, label = test_l)
+
+# voorspelling_c2h4 <- predict(xgb.fit_full_c2h4,test_1)
+# voorspelling_c2h6 <- predict(xgb.fit_full_c2h6,test_1)
+# voorspelling_ch4 <- predict(xgb.fit_full_ch4,test_1)
+# voorspelling_h2 <- predict(xgb.fit_full_h2,test_1)
+
+
+params = list(
+  booster="gbtree",
+  tree_method="exact",
+  eta=0.08697742,
+  max_depth=6,
+  gamma=0,
+  subsample=0.47529492,
+  colsample_bytree=1,
+  eval_metric = "mlogloss",
+  objective="multi:softmax", 
+  num_class = 4
+)
+
+
+xgb.fit_tdcg_kleur=xgb.train(
+  params=params,
+  data=train_1,
+  nrounds=390,
+  early_stopping_rounds=5,
+  watchlist=list(val1=train_1,val2=test_1),
+  verbose=1
+)
+
+voorspelling_tdcg <- predict(xgb.fit_tdcg_kleur,test_1)
+
+
+
+View(voorspelling_tdcg)
+## Combine to list and return
+DATA_c2h2 <- list(train_1,test_1)
+return(DATA)
+}
+
+data <- data_parsing(full_data)
+data[1]
+
+params = list(
+  booster="gbtree",
+  tree_method="exact",
+  eta=0.08697742,
+  max_depth=6,
+  gamma=0,
+  subsample=0.47529492,
+  colsample_bytree=1,
+  eval_metric = "rmse",
+  objective="reg:squarederror"
+)
+
+xgb.fit_full_H2=xgb.train(
+  params=params,
+  data=train_1,
+  nrounds=390,
+  early_stopping_rounds=5,
+  watchlist=list(val1=train_1,val2=test_1),
+  verbose=1
+)
+
+xgb.fit_full_H2=xgb.train(
+  params=params,
+  data=data[[1]],
+  nrounds=390,
+  early_stopping_rounds=5,
+  watchlist=list(val1=data[[1]],val2=data[[2]]),
+  verbose=1
+)
+
+
+# https://xgboost.readthedocs.io/en/latest/parameter.html
+
+
+######## START PSO 
+set.seed(666)
+
+# https://xgboost.readthedocs.io/en/latest/parameter.html
+
+XGboost_pso_H2 <- function(x){
+  x1 <- x[1]
+  x2 <- x[2]
+  x3 <- x[3]
+  x4 <- x[4]
+  x5 <- x[5]
+  x6 <- x[6]
+  x7 <- x[7]
+  traing_set <- train_1
+  testing_set<- test_1
+  # params = list(
+  #   booster="gbtree",
+  #   tree_method="approx",
+  #   eta=10^x1,
+  #   lambda=10^x5,
+  #   alpha = 10^x6,
+  #   max_depth=round(x2,0),
+  #   gamma=x7,
+  #   # sampling_method="gradient_based",
+  #   subsample=x4,
+  #   colsample_bytree=1,
+  #   eval_metric = "rmse",
+  #   objective="reg:squarederror"
+  # )
+  params = list(
+    booster="gbtree",
+    tree_method="exact",
+      eta=10^x1,
+      lambda=10^x5,
+      alpha = 10^x6,
+      max_depth=round(x2,0),
+      gamma=x7,
+      # sampling_method="gradient_based",
+      subsample=x4,
+      colsample_bytree=1,
+    eval_metric = "mlogloss",
+    objective="multi:softprob", 
+    num_class = 4
+  )
+  
+  xgb.fit=xgb.train(
+    params=params,
+    data=traing_set,
+    nrounds=round(x3,0),
+    early_stopping_rounds=5,
+    watchlist=list(val1=traing_set,val2=testing_set),
+    verbose=1
+  )
+  # Dit bepaald wat PSO evaluate
+  return(xgb.fit$best_score)
+}
+
+
+
+# x_E <- c(0.4999826,1.6222368,262.7718171,0.4321643)
+# test_E_2$
+# test_E_2 <- XGboost_pso_E(x_E)
+# Set parameter settings for search algorithm
+max_iter <- 30 # maximum number of iterations
+pop_size <- 15 # population size --> Swarm size affects the size of search space explored. Laarge swarm is more serch space
+
+
+
+# Define minimum and maximum values for each input
+# eta_min_max <- c(10^-5,0.9999)
+eta_min_max <- c(-5,3)
+max_tree_depth_min_max <- c(4,20)
+nrounds_min_max <- c(10,10^3)
+subsample_min_max <- c(0.05,0.95)
+alpha_min_max <- c(-3,1)
+lambda_min_max <- c(-3,1)
+gamma_min_max <- c(0,10)
+
+# https://www.analyticsvidhya.com/blog/2016/03/complete-guide-parameter-tuning-xgboost-with-codes-python/
+
+# https://rpubs.com/jeandsantos88/search_methods_for_hyperparameter_tuning_in_r
+PSO_model_XGBoost_Multi_Output_TDCG <- pso::psoptim(
+  par = rep(NA,7),
+  fn = XGboost_pso_H2,
+  lower = c(eta_min_max[1],max_tree_depth_min_max[1],nrounds_min_max[1],
+            subsample_min_max[1],lambda_min_max[1],alpha_min_max[1],gamma_min_max[1]),
+  upper = c(eta_min_max[2],max_tree_depth_min_max[2],nrounds_min_max[2],
+            subsample_min_max[2],lambda_min_max[2],alpha_min_max[2],gamma_min_max[2]),
+  control = list(
+    trace = 1, #  produce tracing information on the progress of the optimization
+    maxit = max_iter, # maximum number of iterations
+    REPORT = 1, #  frequency for reports
+    trace.stats = T,
+    s = pop_size, # Swarm Size,
+    maxit.stagnate = round(0.80*max_iter), # maximum number of iterations without improvement
+    vectorize = T,
+    type = "SPSO2011"# method used
+  ))
+
+# PSO_model_XGBoost_Multi_Output_full_V2$par # 0.08697742   5.73297267 389.65725710   0.47529492
+
+# PSO_model_XGBoost_Multi_Output_TenneT$par # 0.7149034  7.1563708 73.9626979  0.5012272
+
+
+###### END PSO
+
+###### Plot PSO
+PSO_model_XGBoost_Multi_Output_Enexis_V3$stats$f
+
+#### STEDIN PSO RESULTS
+PSO_summary_full_V2 <- data.frame(
+  Iteration = PSO_model_XGBoost_Multi_Output_full_V2$stats$it,
+  Mean = PSO_model_XGBoost_Multi_Output_full_V2$stats$f %>% sapply(FUN = mean),
+  Median = PSO_model_XGBoost_Multi_Output_full_V2$stats$f %>% sapply(FUN = median),
+  Best = PSO_model_XGBoost_Multi_Output_full_V2$stats$error %>% sapply(FUN = min)
+)
+PSO_summary_full_V2 %>% 
+  gather(key = "Parameter", value = "Value", - Iteration) %>% 
+  ggplot(mapping = aes(x = Iteration, y = Value, col = Parameter)) +
+  geom_line() +
+  geom_point() +
+  theme_bw() +
+  theme(aspect.ratio = 0.9) +
+  scale_x_continuous(breaks = PSO_model_XGBoost_Multi_Output_full$stats$it, minor_breaks = NULL) +
+  labs(x = "Iteration", y = "MLogLoss", title = "MLogLoss values at each iteration", subtitle = "Results Stedin using Particle Swarm Optimization") +
+  scale_color_brewer(type = "qual", palette = "Set1")
+
+###### End Plot PSO
+
+params = list(
+  booster="gbtree",
+  tree_method="exact",
+  eta=0.08697742,
+  max_depth=6,
+  gamma=0,
+  subsample=0.47529492,
+  colsample_bytree=1,
+  eval_metric = "mlogloss",
+  objective="multi:softprob", 
+  num_class = 4
+)
+
+xgb.fit_full_V2=xgb.train(
+  params=params,
+  data=train_1,
+  nrounds=390,
+  early_stopping_rounds=5,
+  watchlist=list(val1=train_1,val2=test_1),
+  verbose=1
+)
+xgb.fit <- xgb.fit_full_H2 
+
+importance_matrix <- xgb.importance(model = xgb.fit)
+xgb.plot.importance(importance_matrix = importance_matrix)
+
+
+shap_values<-shap.values(xgb_model = xgb.fit,X_train = train_f)
+shap_values$mean_shap_score
+shap_values_full<-shap_values$shap_score
+#shap_long_full<-shap.prep(xgb_model = xgb.fit1, X_train = test_f)
+shap_long_full <- shap.prep(shap_contrib = shap_values_full, X_train = train_f)
+#shap.plot.summary(shap_long_full, scientific = TRUE)
+
+test_plot<-shap.plot.summary.wrap1(xgb.fit, train_f, top_n=5, dilute = FALSE)
+
+
+shap.plot.summary.wrap1(xgb.fit, train_f[,13], top_n=5, dilute = FALSE)
+test_plot$test_plot
+
+colnames(train_f)
+
+
+SHAP<-xgb.plot.shap(train_f, model = xgb.fit, subsample = NULL,
+                    features = NULL,plot_NA=TRUE,plot=TRUE)
+
+
+#########
+max(fin_data$C2H2[1:5500])
+which(fin_data$C2H2 == 6470)
+
+
+
+labels<-as.matrix(keep_from_full$Fout)
+feats<-as.matrix(oh)
+test_l_h<-as.matrix(H2)[5501:6966]
+train_l_h<-as.matrix(H2)[1:5500]
+train_f<-feats[1:5500,]
+test_f<-feats[5501:6966,]
+
+
+train_h <- xgb.DMatrix(data = train_f, label = train_l_h)
+test_h <- xgb.DMatrix(data = test_f, label = test_l_h)
+
+params.h = list(
+  booster="gbtree",
+  tree_method="exact",
+  eta=0.5,
+  max_depth=16,
+  gamma=1,
+  subsample=1,
+  colsample_bytree=1,
+  objective="reg:squarederror",
+  eval_metric="mae"
+)
+
+xgb.fit.h=xgb.train(
+  params=params.h,
+  data=train_1,
+  nrounds=1000,
+  nthreads=4,
+  early_stopping_rounds=3,
+  watchlist=list(val1=train_h,val2=test_h),
+  verbose=1
+)
+
+importance_matrix.h <- xgb.importance(model = xgb.fit.h)
+xgb.plot.importance(importance_matrix = importance_matrix.h)
+
+
+shap_values<-shap.values(xgb_model = xgb.fit.h,X_train = train_f)
+shap_values$mean_shap_score
+shap_values_full<-shap_values$shap_score
+#shap_long_full<-shap.prep(xgb_model = xgb.fit1, X_train = test_f)
+shap_long_full <- shap.prep(shap_contrib = shap_values_full, X_train = train_f)
+#shap.plot.summary(shap_long_full, scientific = TRUE)
+
+test_plot<-shap.plot.summary.wrap1(xgb.fit, train_f, top_n=10, dilute = FALSE)
+shap.plot.summary.wrap1(xgb.fit.h, train_f, top_n=10, dilute = FALSE)
+test_plot$test_plot
+SHAP<-xgb.plot.shap(train_f, model = xgb.fit.h, subsample = NULL,
+                    features = NULL,plot_NA=TRUE,plot=TRUE)
+
+########## DGA PLOTS FREEK
+colnames(full_data)
+na.omit(full_data$Leeftijd)
+full_data$Leeftijd
+
+length(c(1950:2020))
+
+str(DATA_ch4[1])
+
+xgb.Booster.complete(xgb.fit_full_H2)
+#####  Forecasting
+
+DATAS <- c(DATA_h2,DATA_ch4,DATA_c2h6,DATA_c2h4,DATA_c2h2)
+
+class(DATAS)
+class(data)
+
+str(data[[1]])
+
+predictions <- function(DATAS=DATAS){
+vTemp <- matrix(nrow=260,ncol=length(DATAS))
+params = list(
+  booster="gbtree",
+  tree_method="exact",
+  eta=0.08697742,
+  max_depth=6,
+  gamma=0,
+  subsample=0.47529492,
+  colsample_bytree=1,
+  eval_metric = "rmse",
+  objective="reg:squarederror"
+)
+View(vTemp)
+for(i in 1:length(DATAS)){
+data <- DATAS[[i]]
+train_1 <- data[[1]]
+test_1 <- data[[2]]
+
+xgb.fit=xgb.train(
+  params=params,
+  data=data,
+  nrounds=390,
+  early_stopping_rounds=5,
+  # watchlist=list(val1=train_1,val2=test_1),
+  verbose=1
+)
+
+vTemp[i,] <- predict(xgb.fit,test_1)
+}
+return(vTemp)
+}
+predictions()
+
+voorspelling <- predict(xgb.fit_full_H2,test_1)
+length(voorspelling)
+
+y$H2_hat <- voorspelling
+
+y_true <- full_data[split:NROW(full_data),]
+length(y_true)
+y <- y_true[ ,which(names(y_true) %in% c('UN','Leeftijd','H2','CH4','C2H6','C2H4','C2H2'))]
+
+

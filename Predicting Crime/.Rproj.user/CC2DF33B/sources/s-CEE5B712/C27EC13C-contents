@@ -13,7 +13,9 @@ pacman::p_load(fastDummies,
                gbm,
                mboost,
                gtools, 
-               splitstackshape)
+               splitstackshape,
+               rpart,
+               rpart.plot)
 
 # add dsmle package
 install.packages("../KRR/dsmle_1.0-4.tar.gz", repos = NULL, type="source")
@@ -59,6 +61,7 @@ mX_scaled <- scale(mX)
 # check histograms
 hist(vY, breaks = 30)
 hist(vY_logged, breaks = 30)
+
 
 ###########################
 #  Kernel ridge regression
@@ -336,3 +339,8 @@ vResidualsSquared_stratTrain <- dfTest$ViolentCrimesPerPop_logged - prediction_t
 mean(vResidualsSquared_stratTrain)
 
 
+colnames(dfCrime_clean_gbm)
+control = rpart.control(maxdepth = 2)
+help(rpart)
+quicktree = rpart(ViolentCrimesPerPop_logged ~.,data = dfCrime_clean_gbm, control = control)
+rpart.plot(quicktree, type = 0)
